@@ -1,0 +1,4 @@
+numpy
+igraph
+pyyaml
+matplotlib
