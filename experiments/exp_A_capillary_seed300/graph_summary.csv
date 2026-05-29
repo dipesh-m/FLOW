@@ -1,0 +1,2 @@
+nodes,edges,largest_component_nodes,lcc_artery_fraction,node_radius_min,node_radius_mean,node_radius_max,edge_length_min,edge_length_mean,edge_length_max,edge_radius_min,edge_radius_mean,edge_radius_max,artery_nodes,vein_nodes,capillary_nodes
+7506802,7832373,7453213,0.046354,1.0,3.486786,50.8429,1.0,7.291392,454.516119,1.0,3.525485,50.25085,347408,36468,7122926

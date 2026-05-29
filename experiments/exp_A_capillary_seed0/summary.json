@@ -1,0 +1,27 @@
+{
+  "run_id": "exp_A_capillary_seed0",
+  "nodes": 7506802,
+  "edges": 7832373,
+  "largest_component_nodes": 7453213,
+  "lcc_artery_fraction": 0.046354,
+  "source_rule": "diverse_capillaries_in_lcc",
+  "target_rule": "largest_vein_in_lcc",
+  "seed": 0,
+  "num_sources": 5,
+  "source_pool_size": 200,
+  "sources": [
+    5033299,
+    643927,
+    3842718,
+    379424,
+    41470
+  ],
+  "target": 5570027,
+  "methods": [
+    "bfs",
+    "length",
+    "resistance",
+    "radius"
+  ],
+  "front_fraction": 0.01
+}
