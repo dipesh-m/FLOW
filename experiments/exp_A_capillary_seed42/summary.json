@@ -1,5 +1,6 @@
 {
   "run_id": "exp_A_capillary_seed42",
+  "mode": "front",
   "nodes": 7506802,
   "edges": 7832373,
   "largest_component_nodes": 7453213,

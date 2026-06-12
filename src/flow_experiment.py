@@ -1,12 +1,20 @@
 """FLOW core: graph loading, source/target selection, traversals, metrics.
 
-Per source, single-source shortest-path distance under each edge cost; compare the 1% closest nodes ("front").
+Two experiment kinds share one graph load:
+
+    front      shortest-path distance from each source to all nodes;
+               compare the 1% closest nodes ("front") across costs.
+    highways   shortest source-to-target paths under BFS and resistance;
+               compare per-edge usage vectors.
 
 Edge costs:
     bfs         1                   topology only
     length      L                   physical distance
     resistance  L / r^4             Hagen-Poiseuille single-tube proxy
     radius      1 / r^4             radius-only ablation of resistance
+
+Not a fluid solver. A controlled graph proxy on a fixed graph with fixed
+source rule and fixed drain target.
 """
 
 from __future__ import annotations
@@ -26,7 +34,8 @@ import yaml
 VESSEL_TYPE_NAMES = {1: "artery", 2: "vein", 3: "capillary"}
 FRONT_FRACTION = 0.01
 FRONT_METHODS = ("bfs", "length", "resistance", "radius")
-VALID_SOURCE_RULES = ("diverse_capillaries_in_lcc",)
+HIGHWAY_METHODS = ("bfs", "resistance")
+VALID_SOURCE_RULES = ("diverse_capillaries_in_lcc", "random_arteries_in_lcc")
 
 
 @dataclass(frozen=True)
@@ -43,6 +52,10 @@ class MethodResult:
     path_mean_radius: float
 
 
+# ---------------------------------------------------------------------------
+# Logging / config
+# ---------------------------------------------------------------------------
+
 def log(message: str, t0: float) -> None:
     print(f"[{perf_counter() - t0:7.1f}s] {message}", flush=True)
 
@@ -52,12 +65,17 @@ def load_config(config_path: Path) -> dict[str, Any]:
         config = yaml.safe_load(f)
     if not isinstance(config, dict):
         raise ValueError(f"Config must be a YAML mapping: {config_path}")
+
+    config.setdefault("mode", "front")
     config.setdefault("num_sources", 5)
     config.setdefault("source_pool_size", 200)
     config.setdefault("seed", 42)
+
     for key in ("run_id", "source_rule"):
         if key not in config:
             raise ValueError(f"Config missing required key '{key}': {config_path}")
+    if config["mode"] not in ("front", "highways"):
+        raise ValueError(f"Unknown mode {config['mode']!r}")
     if config["source_rule"] not in VALID_SOURCE_RULES:
         raise ValueError(f"Unknown source_rule {config['source_rule']!r}")
     return config
@@ -67,22 +85,15 @@ def load_config(config_path: Path) -> dict[str, Any]:
 # Graph loading (streaming GML + pickle cache)
 # ---------------------------------------------------------------------------
 
-_NODE_KEYS = (
-    "artery_binary", "artery_region", "artery_region_id", "component_id",
-    "coordinates", "radii", "shortest_path_id", "vein_region", "vessel_type",
-)
-_INT_NODE_KEYS = {
-    "artery_region", "artery_region_id", "component_id",
-    "shortest_path_id", "vein_region", "vessel_type",
-}
+# Only the node attributes the experiment uses are loaded.
+_NODE_KEYS = ("coordinates", "radii", "vessel_type")
+_INT_NODE_KEYS = {"vessel_type"}
 
 
 def _streaming_load_gml(graph_path: Path) -> ig.Graph:
     node_attrs: dict[str, list] = {k: [] for k in _NODE_KEYS}
     edge_src: list[int] = []
     edge_dst: list[int] = []
-    edge_len: list[float] = []
-    edge_rad: list[float] = []
 
     in_node = in_edge = False
     cur: dict[str, str] = {}
@@ -106,7 +117,7 @@ def _streaming_load_gml(graph_path: Path) -> ig.Graph:
                         elif k in _INT_NODE_KEYS:
                             try: node_attrs[k].append(int(float(v)))
                             except ValueError: node_attrs[k].append(None)
-                        elif k in ("artery_binary", "radii"):
+                        elif k == "radii":
                             try: node_attrs[k].append(float(v))
                             except ValueError: node_attrs[k].append(None)
                         else:
@@ -115,8 +126,6 @@ def _streaming_load_gml(graph_path: Path) -> ig.Graph:
                 elif in_edge:
                     edge_src.append(int(cur["source"]))
                     edge_dst.append(int(cur["target"]))
-                    edge_len.append(float(cur["length"]) if "length" in cur else float("nan"))
-                    edge_rad.append(float(cur["radii"]) if "radii" in cur else float("nan"))
                     in_edge = False
                 continue
             sp = s.split(" ", 1)
@@ -132,10 +141,6 @@ def _streaming_load_gml(graph_path: Path) -> ig.Graph:
     for k, vals in node_attrs.items():
         if any(v is not None for v in vals):
             g.vs[k] = vals
-    if any(not (isinstance(v, float) and np.isnan(v)) for v in edge_len):
-        g.es["length"] = edge_len
-    if any(not (isinstance(v, float) and np.isnan(v)) for v in edge_rad):
-        g.es["radii"] = edge_rad
     return g
 
 
@@ -199,6 +204,7 @@ def edge_endpoint_array(graph: ig.Graph) -> np.ndarray:
 
 
 def graph_arrays(graph: ig.Graph) -> dict[str, Any]:
+    """All edge weights and node arrays needed for any method."""
     _require_attrs(graph, ["radii", "vessel_type"])
     node_radii = np.asarray(graph.vs["radii"], dtype=np.float64)
     node_types = np.asarray(graph.vs["vessel_type"], dtype=np.int32)
@@ -258,16 +264,26 @@ def choose_sources(
     seed: int,
     pool_size: int,
 ) -> list[int]:
+    """Capillary rule: random pool from LCC capillaries then k-center for spread.
+    Artery rule: uniform random sample from LCC arteries.
+    """
     lcc_types = arrays["node_types"][lcc_nodes]
     if source_rule == "diverse_capillaries_in_lcc":
         candidates = lcc_nodes[lcc_types == 3]
         type_name = "capillary"
+    elif source_rule == "random_arteries_in_lcc":
+        candidates = lcc_nodes[lcc_types == 1]
+        type_name = "artery"
     else:
         raise ValueError(f"Unknown source_rule {source_rule!r}")
     if len(candidates) < num_sources:
         raise ValueError(f"Need {num_sources} {type_name} nodes in LCC, found {len(candidates)}.")
 
     rng = np.random.default_rng(seed)
+    if source_rule == "random_arteries_in_lcc":
+        idx = rng.choice(len(candidates), size=num_sources, replace=False)
+        return [int(candidates[i]) for i in idx]
+
     eff_pool = max(num_sources, min(pool_size, len(candidates)))
     pool = candidates[rng.choice(len(candidates), size=eff_pool, replace=False)]
     return _k_center(arrays["coords"], pool, num_sources)
@@ -282,7 +298,7 @@ def choose_target(arrays: dict[str, np.ndarray], lcc_nodes: np.ndarray) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Edge weights and single-source shortest-path
+# Edge weights and a single source-shortest-path
 # ---------------------------------------------------------------------------
 
 def method_weights(method: str, arrays: dict[str, np.ndarray]) -> np.ndarray | None:
@@ -346,7 +362,7 @@ def run_method(
 
 
 # ---------------------------------------------------------------------------
-# Front metric rows
+# Front metric row construction
 # ---------------------------------------------------------------------------
 
 def _overlap(a: np.ndarray, b: np.ndarray) -> float:
@@ -429,6 +445,36 @@ def graph_summary_row(graph: ig.Graph, arrays: dict[str, np.ndarray], lcc_nodes:
 
 
 # ---------------------------------------------------------------------------
+# Highways
+# ---------------------------------------------------------------------------
+
+def compute_highways(
+    graph: ig.Graph, sources: list[int], target: int, weights: np.ndarray | None
+) -> np.ndarray:
+    weight_list = weights.tolist() if isinstance(weights, np.ndarray) else weights
+    usage = np.zeros(graph.ecount(), dtype=np.int64)
+    for source in sources:
+        epaths = graph.get_shortest_paths(
+            source, to=target, weights=weight_list, output="epath"
+        )
+        if not epaths or not epaths[0]:
+            continue
+        np.add.at(usage, np.asarray(epaths[0], dtype=np.int64), 1)
+    return usage
+
+
+def weighted_jaccard(left: np.ndarray, right: np.ndarray) -> float:
+    den = float(np.maximum(left, right).sum())
+    return 1.0 if den == 0.0 else float(np.minimum(left, right).sum()) / den
+
+
+def set_jaccard(left: np.ndarray, right: np.ndarray) -> float:
+    a, b = left > 0, right > 0
+    union = int((a | b).sum())
+    return 1.0 if union == 0 else float((a & b).sum()) / union
+
+
+# ---------------------------------------------------------------------------
 # CSV
 # ---------------------------------------------------------------------------
 
@@ -447,7 +493,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Run driver
+# Run drivers (take a pre-loaded graph)
 # ---------------------------------------------------------------------------
 
 def run_front(
@@ -488,6 +534,7 @@ def run_front(
     write_csv(out_dir / "graph_summary.csv", [graph_summary_row(graph, arrays, lcc_nodes)])
     summary = {
         "run_id": config["run_id"],
+        "mode": "front",
         "nodes": graph.vcount(),
         "edges": graph.ecount(),
         "largest_component_nodes": int(len(lcc_nodes)),
@@ -503,4 +550,79 @@ def run_front(
         "front_fraction": FRONT_FRACTION,
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    return out_dir
+
+
+def run_highways(
+    graph: ig.Graph,
+    arrays: dict[str, np.ndarray],
+    lcc_nodes: np.ndarray,
+    config: dict[str, Any],
+    config_path: Path,
+    output_root: Path,
+    t0: float,
+) -> Path:
+    out_dir = output_root / config["run_id"]
+    out_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(config_path, out_dir / "config.yaml")
+
+    sources = choose_sources(
+        arrays, lcc_nodes,
+        config["source_rule"], int(config["num_sources"]),
+        int(config["seed"]), int(config["source_pool_size"]),
+    )
+    target = choose_target(arrays, lcc_nodes)
+    log(f"  {config['run_id']}: target={target}, n_sources={len(sources)}", t0)
+
+    usage_by_method: dict[str, np.ndarray] = {}
+    for method in HIGHWAY_METHODS:
+        usage = compute_highways(graph, sources, target, method_weights(method, arrays))
+        usage_by_method[method] = usage
+        log(
+            f"    {method}: total path edges={int(usage.sum()):,}, unique={int((usage > 0).sum()):,}",
+            t0,
+        )
+
+    eps = arrays["edge_endpoints"]
+    for method in HIGHWAY_METHODS:
+        usage = usage_by_method[method]
+        nz = np.flatnonzero(usage > 0)
+        with (out_dir / f"highways_{method}.csv").open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["edge_id", "src", "dst", "length_um", "radius_um", "usage"])
+            for eid in nz.tolist():
+                w.writerow([
+                    eid, int(eps[eid, 0]), int(eps[eid, 1]),
+                    round(float(arrays["edge_lengths"][eid]), 4),
+                    round(float(arrays["edge_radii"][eid]), 4),
+                    int(usage[eid]),
+                ])
+
+    wj = weighted_jaccard(usage_by_method["bfs"], usage_by_method["resistance"])
+    sj = set_jaccard(usage_by_method["bfs"], usage_by_method["resistance"])
+
+    summary = {
+        "run_id": config["run_id"],
+        "mode": "highways",
+        "nodes": graph.vcount(),
+        "edges": graph.ecount(),
+        "largest_component_nodes": int(len(lcc_nodes)),
+        "source_rule": config["source_rule"],
+        "target_rule": "largest_vein_in_lcc",
+        "seed": int(config["seed"]),
+        "n_sources": len(sources),
+        "sources": sources,
+        "target": int(target),
+        "methods": list(HIGHWAY_METHODS),
+        "weighted_jaccard_usage": wj,
+        "set_jaccard_usage": sj,
+        "usage_summary": {
+            m: {
+                "total_path_edges": int(usage_by_method[m].sum()),
+                "unique_edges_used": int((usage_by_method[m] > 0).sum()),
+            }
+            for m in HIGHWAY_METHODS
+        },
+    }
+    (out_dir / "highways_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return out_dir

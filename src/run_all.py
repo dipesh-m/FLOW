@@ -13,7 +13,7 @@ from time import perf_counter
 
 from flow_experiment import (
     graph_arrays, largest_component_nodes, load_config, load_graph, log,
-    run_front,
+    run_front, run_highways,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -45,8 +45,11 @@ def main() -> None:
 
     for cfg_path in configs:
         config = load_config(cfg_path)
-        log(f">>> {config['run_id']}", t0)
-        out = run_front(graph, arrays, lcc_nodes, config, cfg_path, OUTPUT_ROOT, t0)
+        log(f">>> {config['run_id']} ({config['mode']})", t0)
+        if config["mode"] == "front":
+            out = run_front(graph, arrays, lcc_nodes, config, cfg_path, OUTPUT_ROOT, t0)
+        else:
+            out = run_highways(graph, arrays, lcc_nodes, config, cfg_path, OUTPUT_ROOT, t0)
         log(f"<<< {out}", t0)
 
     log("All runs done.", t0)

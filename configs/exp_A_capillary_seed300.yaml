@@ -1,5 +1,6 @@
 # Capillary-primary front run, seed 300.
 run_id: exp_A_capillary_seed300
+mode: front
 source_rule: diverse_capillaries_in_lcc
 seed: 300
 num_sources: 5

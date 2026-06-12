@@ -2,9 +2,16 @@
 
 Biomedical Image Analysis Project SS2026, FAU Erlangen.
 
-FLOW is a controlled shortest-path experiment on a 3-D vascular graph ( ~7.5 M nodes, ~7.8 M edges). It asks the question:
+FLOW currently tests the capillary-primary front experiment. It asks whether the
+choice of edge cost changes which graph regions are reached first.
 
-> With the graph, source rule, and drain target fixed, how much does the choice of edge cost change which graph regions are reached first and which source-to-target routes carry the most paths?
+FLOW is a controlled shortest-path study on a 3-D vascular graph
+(HC1.5, ~7.5 M nodes, ~7.8 M edges).
+
+## Question
+
+With the graph, the capillary source rule, and the drain target fixed, how much
+does the edge cost change the 1% front reached from each source?
 
 ## Traversal methods
 
@@ -15,80 +22,39 @@ FLOW is a controlled shortest-path experiment on a 3-D vascular graph ( ~7.5 M n
 | `resistance` | L / r⁴ | Hagen-Poiseuille single-tube proxy |
 | `radius` | 1 / r⁴ | radius-only ablation of `resistance` |
 
-## Hypotheses (formal metrics)
+## Hypotheses
 
 | ID | Metric | Support condition |
 |---|---|---|
-| H1 | mean `front_1pct_overlap_with_bfs` for `resistance` in capillary-primary runs | low (≪ `length` overlap which stays BFS-like) |
-| H2 | mean `front_1pct_overlap_with_radius` for `resistance` in capillary-primary runs | high (≈ 1.0 = length adds little once radius is in the cost) |
-
-Artery fraction in the 1% front is reported as descriptive context only.
+| H1 | mean `front_1pct_overlap_with_bfs` for `resistance` vs for `length` | resistance overlap far below length overlap |
+| H2 | mean `front_1pct_overlap_with_radius` for `resistance` | radius drives most of the front, length still moves part of it |
 
 ## Experiment matrix
 
-| Group | Runs | Seeds | Purpose |
-|---|---:|---|---|
-| A capillary front | 5 | 0, 42, 100, 200, 300 | H1, H2 primary |
+| Group | Runs | Seeds | Sources/run | Purpose |
+|---|---:|---|---:|---|
+| A capillary front | 5 | 0, 42, 100, 200, 300 | 5 | H1, H2 |
 
-Each run uses 5 capillary sources selected by random pool + greedy 3-D k-center (25 sources aggregated across seeds). All runs target the largest-radius vein in the LCC.
+All runs target the largest-radius vein in the largest connected component.
 
-## Repository layout
+## Results (current)
 
-```text
-FLOW/
-  configs/                YAML configs
-  data/V2/HC1.5.gml       graph (+ pickle cache, gitignored)
-  docs/notes.md           extended methods
-  experiments/            generated outputs (per run + analysis.json + _figures/)
-  src/
-    flow_experiment.py    core: loading, selection, traversals, metrics
-    run_all.py            loads graph once, runs every config in configs/
-    analyse.py            builds analysis.json and the two figures
-  experiments.csv         experiment registry
-  requirements.txt
-```
+Means over 25 capillary sources, std in parentheses. Full values in
+`experiments/analysis.json`.
 
-## Setup
+| Hypothesis | Result | Reading |
+|---|---|---|
+| H1 | length↔BFS 0.86 (0.04); resistance↔BFS 0.31 (0.15) | Supported. Length stays close to hop count; the radius-aware cost reaches a very different front. |
+| H2 | resistance↔radius 0.74 (0.08) | Partial. Radius drives most of the front; dropping length still changes about a quarter of it. |
+
+## Run it
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python src/run_all.py     # needs the HC1.5 graph under data/V2/
+python src/analyse.py     # writes analysis.json + figures
 ```
-
-## Run everything
-
-```powershell
-python src/run_all.py        # loads graph once, runs all configs
-python src/analyse.py        # writes experiments/analysis.json + figures
-```
-
-To run a single config:
-
-```powershell
-python src/run_all.py --only exp_A_capillary_seed42
-```
-
-## Outputs
-
-Per run (`experiments/<run_id>/`):
-
-| File | Contents |
-|---|---|
-| `config.yaml` | frozen config copy |
-| `summary.json` | graph stats, sources, target, methods, seed |
-| `metrics.csv` | one row per (source, method) with the 1% front numbers |
-| `paths.csv` | source-to-target shortest-path hops, length, mean radius |
-| `graph_summary.csv` | one-row graph-level summary |
-
-Aggregate:
-
-| File | Contents |
-|---|---|
-| `experiments/analysis.json` | H1 and H2 values plus descriptive context |
-| `experiments/_figures/fig1_h1_front_overlap.png` | H1 |
-| `experiments/_figures/fig2_h2_radius_overlap.png` | H2 |
-
----
 
 Graph data not available publicly.
