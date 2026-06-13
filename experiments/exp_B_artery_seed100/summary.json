@@ -1,0 +1,28 @@
+{
+  "run_id": "exp_B_artery_seed100",
+  "mode": "front",
+  "nodes": 7506802,
+  "edges": 7832373,
+  "largest_component_nodes": 7453213,
+  "lcc_artery_fraction": 0.046354,
+  "source_rule": "random_arteries_in_lcc",
+  "target_rule": "largest_vein_in_lcc",
+  "seed": 100,
+  "num_sources": 5,
+  "source_pool_size": 200,
+  "sources": [
+    529262,
+    4420401,
+    6088145,
+    352715,
+    6604955
+  ],
+  "target": 5570027,
+  "methods": [
+    "bfs",
+    "length",
+    "resistance",
+    "radius"
+  ],
+  "front_fraction": 0.01
+}
