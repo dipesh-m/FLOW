@@ -317,6 +317,7 @@ def fig3_highways(a: dict[str, Any]) -> None:
     metric_labels = ("Weighted Jaccard\n(usage mass)", "Set Jaccard\n(which edges)")
     x = np.arange(len(metrics))
     width = 0.36
+    all_tops = []
     for off, g in zip((-width / 2, width / 2), groups):
         h = a["highways"].get(g) or {}
         means = [_mean(h.get(m)) for m in metrics]
@@ -324,16 +325,18 @@ def fig3_highways(a: dict[str, Any]) -> None:
         bars = ax.bar(x + off, means, width, yerr=errs, capsize=3,
                       color=COLOURS[g], edgecolor="black", alpha=0.9, label=LABELS[g])
         for b, v, e in zip(bars, means, errs):
-            ax.text(b.get_x() + b.get_width() / 2, v + e + 0.012, f"{v:.3f}",
+            top = v + e
+            all_tops.append(top)
+            ax.text(b.get_x() + b.get_width() / 2, top + 0.003, f"{v:.3f}",
                     ha="center", va="bottom", fontsize=9)
-    ax.axhline(1.0, color="#555", linestyle=":", linewidth=1)
-    ax.text(len(metrics) - 0.5, 1.005, "identical = 1.0", fontsize=8, color="#555",
-            ha="right", va="bottom")
+    y_max = max(all_tops) * 1.45 if all_tops else 0.15
+    ax.set_ylim(0, y_max)
+    ax.text(0.99, 0.03, "identical = 1.0", fontsize=9, color="#555",
+            ha="right", va="bottom", transform=ax.transAxes)
     ax.set_xticks(x)
     ax.set_xticklabels(metric_labels)
     ax.set_ylabel("BFS ↔ resistance highway overlap (mean ± std)")
-    ax.set_ylim(0, 1.18)
-    ax.set_title("H3: BFS and resistance highways barely overlap")
+    ax.set_title("H3: BFS and resistance highways overlap")
     h_cap = a["highways"].get("capillary_primary") or {}
     h_art = a["highways"].get("artery_control") or {}
     ax.text(0.01, 0.97,
