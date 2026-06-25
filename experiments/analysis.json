@@ -294,8 +294,80 @@
     }
   },
   "highways": {
-    "capillary_primary": null,
-    "artery_control": null
+    "capillary_primary": {
+      "n_runs": 3,
+      "n_sources": 100,
+      "weighted_jaccard_usage": {
+        "mean": 0.024735032241852962,
+        "std": 0.002825341904981842,
+        "n": 3
+      },
+      "set_jaccard_usage": {
+        "mean": 0.048555846661952354,
+        "std": 0.0031344083566355275,
+        "n": 3
+      },
+      "per_run": [
+        {
+          "run_id": "exp_C_highways_capillary_seed0",
+          "seed": 0,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.02763467546229821,
+          "set_jaccard_usage": 0.05201776152540159
+        },
+        {
+          "run_id": "exp_C_highways_capillary_seed100",
+          "seed": 100,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.021990371345988736,
+          "set_jaccard_usage": 0.04591062731216565
+        },
+        {
+          "run_id": "exp_C_highways_capillary_seed42",
+          "seed": 42,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.02458004991727194,
+          "set_jaccard_usage": 0.047739151148289825
+        }
+      ]
+    },
+    "artery_control": {
+      "n_runs": 3,
+      "n_sources": 100,
+      "weighted_jaccard_usage": {
+        "mean": 0.030331929366897097,
+        "std": 0.003442681715856718,
+        "n": 3
+      },
+      "set_jaccard_usage": {
+        "mean": 0.09031823229762753,
+        "std": 0.0028339266697369127,
+        "n": 3
+      },
+      "per_run": [
+        {
+          "run_id": "exp_C_highways_artery_seed0",
+          "seed": 0,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.03381169287032049,
+          "set_jaccard_usage": 0.09358888641259937
+        },
+        {
+          "run_id": "exp_C_highways_artery_seed100",
+          "seed": 100,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.026927568156953463,
+          "set_jaccard_usage": 0.08859203932458744
+        },
+        {
+          "run_id": "exp_C_highways_artery_seed42",
+          "seed": 42,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.030256527073417337,
+          "set_jaccard_usage": 0.08877377115569579
+        }
+      ]
+    }
   },
   "hypotheses": {
     "H1": {
@@ -319,6 +391,20 @@
         "mean": 0.74281976,
         "std": 0.08053897214303563,
         "n": 25
+      }
+    },
+    "H3": {
+      "statement": "BFS and resistance pick different high-usage source-to-target highways.",
+      "metric_primary": "weighted_jaccard_usage (capillary-primary highways, mean over seeds)",
+      "weighted_jaccard": {
+        "mean": 0.024735032241852962,
+        "std": 0.002825341904981842,
+        "n": 3
+      },
+      "set_jaccard": {
+        "mean": 0.048555846661952354,
+        "std": 0.0031344083566355275,
+        "n": 3
       }
     }
   },

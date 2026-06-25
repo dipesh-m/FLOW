@@ -1,20 +1,10 @@
 # FLOW
 
-BIMAP SS2026, FAU Erlangen. Author: Dipesh Mann.
+FLOW is a controlled shortest-path experiment on a 3-D mouse cortex vascular graph (HC1.5, ~7.5 M nodes, ~7.8 M edges). It asks one question:
 
-FLOW currently tests the capillary-primary front experiment and an artery-source
-control. The artery runs check whether the front effect is a property of the cost
-function rather than a consequence of starting on capillaries.
+> With the graph, source rule, and drain target fixed, how much does the choice of edge cost change which graph regions are reached first and which source-to-target routes carry the most paths?
 
-FLOW is a controlled shortest-path study on a 3-D mouse cortex vascular graph
-(HC1.5, ~7.5 M nodes, ~7.8 M edges). It is not a hemodynamics solver. It is a
-graph proxy.
-
-## Question
-
-With the graph, the source rule, and the drain target fixed, how much does the
-edge cost change the 1% front, and does the answer survive switching the start
-from capillaries to arteries?
+This is not a hemodynamics solver. It is a graph proxy.
 
 ## Traversal methods
 
@@ -25,67 +15,115 @@ from capillaries to arteries?
 | `resistance` | L / r⁴ | Hagen-Poiseuille single-tube proxy |
 | `radius` | 1 / r⁴ | radius-only ablation of `resistance` |
 
-## Hypotheses
+## Hypotheses (formal metrics)
 
 | ID | Metric | Support condition |
 |---|---|---|
-| H1 | mean `front_1pct_overlap_with_bfs` for `resistance` vs for `length` | resistance overlap far below length overlap |
-| H2 | mean `front_1pct_overlap_with_radius` for `resistance` | radius drives most of the front, length still moves part of it |
+| H1 | mean `front_1pct_overlap_with_bfs` for `resistance` in capillary-primary runs | low (≪ `length` overlap which stays BFS-like) |
+| H2 | mean `front_1pct_overlap_with_radius` for `resistance` in capillary-primary runs | radius drives most of the cost, but length still matters (overlap well below 1.0) |
+| H3 | `weighted_jaccard_usage` and `set_jaccard_usage` between BFS and resistance highways (capillary-primary) | low (different edges, different usage mass) |
 
-Group B (arteries) is a source-type control, not a separate hypothesis.
+Artery fraction in the 1% front is reported as descriptive context only.
 
 ## Experiment matrix
 
-| Group | Runs | Seeds | Sources/run | Purpose |
-|---|---:|---|---:|---|
-| A capillary front | 5 | 0, 42, 100, 200, 300 | 5 | H1, H2 primary |
-| B artery front (control) | 5 | 0, 42, 100, 200, 300 | 5 | source-type control |
+| Group | Runs | Seeds | Purpose |
+|---|---:|---|---|
+| A capillary front | 5 | 0, 42, 100, 200, 300 | H1, H2 primary |
+| B artery front (control) | 5 | 0, 42, 100, 200, 300 | source-type control |
+| C highways capillary | 3 | 0, 42, 100 | H3 primary |
+| C highways artery (control) | 3 | 0, 42, 100 | highways control |
 
-All runs target the largest-radius vein in the largest connected component.
+A and B use 5 sources per run (25 sources per group). C uses 100 sources per run (300 sources per group). All runs target the largest-radius vein in the LCC.
 
-## Results (verified)
+## Repository layout
 
-Means over seeds (25 sources per group), std in parentheses. Full values in
-`experiments/analysis.json`.
+```text
+FLOW/
+  configs/                YAML configs (16 total)
+  data/V2/HC1.5.gml       graph (+ pickle cache)
+  docs/notes.md           extended methods
+  experiments/            generated outputs (per run + analysis.json + _figures/)
+  src/
+    flow_experiment.py    core: loading, selection, traversals, metrics, both run drivers
+    run_all.py            loads graph once, runs every config in configs/
+    analyse.py            builds analysis.json and the three figures
+  experiments.csv         experiment registry
+  requirements.txt
+```
 
-| Hypothesis | Capillary | Artery | Reading |
-|---|---|---|---|
-| H1 length↔BFS | 0.86 (0.04) | 0.79 (0.07) | Length stays close to hop count in both. |
-| H1 resistance↔BFS | 0.31 (0.15) | 0.26 (0.16) | The radius-aware cost reaches a very different front in both. |
-| H2 resistance↔radius | 0.74 (0.08) | 0.76 (0.07) | Radius dominates; length still moves about a quarter. |
-
-The control matches the primary group, so the effect is not specific to capillary
-starts.
-
-## Run it
+## Setup
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-python src/run_all.py     # needs the HC1.5 graph under data/V2/
-python src/analyse.py     # writes analysis.json + figures
 ```
 
-The outputs under `experiments/` are committed, so `python src/analyse.py` alone
-regenerates the analysis and figures without the 2.5 GB graph. Only a full re-run
-of `run_all.py` needs the graph under `data/V2/`.
+Python 3.11+. The graph is ~2.5 GB GML; a pickle cache is created on first load and reused (~30 s warm vs ~10 min cold).
 
-## Layout
+## Run everything
 
-```text
-configs/        10 YAML configs (groups A, B)
-data/V2/        graph (HC1.5.gml + pickle cache)
-docs/notes.md   methods detail
-experiments/    per-run outputs + analysis.json + _figures/
-src/            flow_experiment.py, run_all.py, analyse.py
-experiments.csv experiment registry
+```powershell
+python src/run_all.py        # loads graph once, runs all 16 configs (~30-40 min)
+python src/analyse.py        # writes experiments/analysis.json + figures
 ```
+
+The run outputs under `experiments/` are committed, so `python src/analyse.py`
+alone regenerates `analysis.json` and all three figures without the 2.5 GB graph.
+Only a full re-run of `run_all.py` needs the graph under `data/V2/`.
+
+To run a single config:
+
+```powershell
+python src/run_all.py --only exp_A_capillary_seed42
+```
+
+## Outputs
+
+Per front run (`experiments/<run_id>/`):
+
+| File | Contents |
+|---|---|
+| `config.yaml` | frozen config copy |
+| `summary.json` | graph stats, sources, target, methods, seed |
+| `metrics.csv` | one row per (source, method) with the 1% front numbers |
+| `paths.csv` | source-to-target shortest-path hops, length, mean radius |
+| `graph_summary.csv` | one-row graph-level summary |
+
+Per highways run:
+
+| File | Contents |
+|---|---|
+| `config.yaml`, `highways_summary.json` | config + per-edge usage statistics, Jaccard values |
+| `highways_bfs.csv`, `highways_resistance.csv` | edges with usage > 0 |
+
+Aggregate:
+
+| File | Contents |
+|---|---|
+| `experiments/analysis.json` | H1, H2, H3 values and descriptive context |
+| `experiments/_figures/fig1_h1_front_overlap.png` | H1 |
+| `experiments/_figures/fig2_h2_radius_overlap.png` | H2 |
+| `experiments/_figures/fig3_h3_highways_jaccard.png` | H3 (weighted + set Jaccard) |
+
+## Results
+
+Numbers below are means over seeds (capillary-primary, 25 sources; std in parentheses). Full values in `experiments/analysis.json`.
+
+| Hypothesis | Result | Reading |
+|---|---|---|
+| H1 | `length`↔BFS front overlap 0.86 (0.04); `resistance`↔BFS 0.31 (0.15) | Supported. Hop-count and physical distance reach almost the same early front; the radius-weighted cost reaches a very different one. |
+| H2 | `resistance`↔`radius` front overlap 0.74 (0.08) | Partial. Radius drives most of the resistance front, but dropping length still changes about a quarter of it. Length is not negligible. |
+| H3 | BFS↔resistance highways: weighted Jaccard 0.025 (0.003), set Jaccard 0.049 (0.003) | Supported. The two cost rules route load through almost disjoint edge sets. |
+
+The artery control (group B) shows the same pattern (H2 overlap 0.76, H3 set Jaccard 0.090), so the effect is not specific to capillary sources.
 
 ## Limitations
 
 - Graph loaded undirected. No pressure boundaries or conservation laws.
 - L/r⁴ is a single-tube proxy, not full hemodynamics.
 - The 1% front is source-centered and does not depend on the drain target.
+- Highways use one shortest path per source-target pair; BFS ties are not enumerated.
 - One cortex sample. Seeds measure within-sample robustness only.
 - No functional perfusion ground truth.

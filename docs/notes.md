@@ -1,19 +1,20 @@
 # FLOW Notes
 
 Controlled shortest-path experiment on a 3-D vascular graph from mouse cortex.
-Not a fluid solver. Current scope: the capillary front experiment plus an artery
-control group.
+Not a fluid solver. Current scope: the front experiments plus the routing
+experiment (H3).
 
 ## Core question
 
 With the graph, the source rule, and the drain target fixed, how much does the
-choice of edge cost change the early (1%) front reached from each source, and
-does the answer survive switching the start from capillaries to arteries?
+choice of edge cost change
+
+1. the early (1%) front reached from each source, and
+2. the high-usage source-to-target highways?
 
 Capillary starts are primary. If a radius-aware cost still produces artery-heavy
-fronts even when the traversal starts from capillaries, the effect cannot be
-dismissed as "you started on an artery." The artery group is the control that
-checks this.
+fronts and very different highways even when the traversal starts from
+capillaries, the effect cannot be dismissed as "you started on an artery."
 
 ## Data
 
@@ -49,13 +50,10 @@ difference between their fronts is the contribution of length.
 | `diverse_capillaries_in_lcc` | seeded random pool of `source_pool_size` capillaries from the LCC; greedy k-center on 3-D coordinates picks `num_sources` spread points |
 | `random_arteries_in_lcc` | uniform random `num_sources` arteries from the LCC |
 
-For capillaries, random-then-k-center matters because capillaries are ~95% of
-nodes and a top-radius pool would bias toward transitional vessels.
-
 ## Drain target
 
 `largest_vein_in_lcc`: the vein with the largest radius inside the LCC. Fixed
-across every run.
+across every run, so source-to-target paths and highways share the same drain.
 
 ## Front metric (per source, per method)
 
@@ -73,8 +71,22 @@ source to all nodes. The 1% front is the closest
 | `front_1pct_artery_fraction` | artery share inside the front |
 | `front_1pct_overlap_with_radius` | overlap with the `radius` front |
 
-The overlap is a same-size-set intersection over front size, so it is symmetric
-and bounded in `[0, 1]`.
+## Highways metric (per run)
+
+For 100 sources and the same drain target, compute one shortest source-to-target
+path under BFS and under resistance. Each edge gets a usage count: how many of
+the 100 paths used it.
+
+```text
+weighted_jaccard = Σ_e min(usage_bfs[e], usage_res[e]) / Σ_e max(usage_bfs[e], usage_res[e])
+set_jaccard       = |{e: usage_bfs[e]>0} ∩ {e: usage_res[e]>0}| / |{e: usage_bfs[e]>0} ∪ {e: usage_res[e]>0}|
+```
+
+Weighted Jaccard cares about shared usage mass and is sensitive to total path
+length asymmetry (resistance paths are ~3× longer in edges because they prefer
+many short capillary edges). Set Jaccard ignores usage counts and answers "what
+fraction of the union of highway edges is shared?". Both go into `analysis.json`
+and figure 3.
 
 ## Hypotheses
 
@@ -82,13 +94,12 @@ and bounded in `[0, 1]`.
 |---|---|---|---|
 | H1 | Radius-aware costs reshape the 1% front relative to BFS; pure length stays BFS-like. | mean `front_1pct_overlap_with_bfs`, resistance vs length, capillary-primary | resistance overlap far below length overlap |
 | H2 | Removing length from `resistance` (ablation to `radius`) shifts most but not all of the front. | mean `front_1pct_overlap_with_radius` for `resistance`, capillary-primary | overlap high but clearly below 1.0 |
-
-Group B (arteries) is a source-type control, not a separate hypothesis.
+| H3 | BFS and resistance pick different high-usage highways. | `weighted_jaccard_usage` and `set_jaccard_usage`, capillary-primary highways | both well below 1.0 |
 
 Measured (capillary / artery): H1 length↔BFS 0.86 / 0.79, resistance↔BFS
-0.31 / 0.26; H2 resistance↔radius 0.74 / 0.76. The control matches the primary
-group, so the front effect is a property of the cost function, not the start
-vessel type.
+0.31 / 0.26; H2 resistance↔radius 0.74 / 0.76; H3 weighted Jaccard
+0.025 / 0.030, set Jaccard 0.049 / 0.090. The control matches the primary group
+on every metric.
 
 ## Experiment matrix
 
@@ -96,8 +107,10 @@ vessel type.
 |---|---|---|---:|---:|---|
 | A | `exp_A_capillary_seed{0,42,100,200,300}` | diverse_capillaries_in_lcc | 0/42/100/200/300 | 5 | H1, H2 |
 | B | `exp_B_artery_seed{0,42,100,200,300}` | random_arteries_in_lcc | 0/42/100/200/300 | 5 | control |
+| C | `exp_C_highways_capillary_seed{0,42,100}` | diverse_capillaries_in_lcc | 0/42/100 | 100 | H3 |
+| C | `exp_C_highways_artery_seed{0,42,100}` | random_arteries_in_lcc | 0/42/100 | 100 | highways control |
 
-Each group aggregates to 25 sources.
+A and B aggregate to 25 sources per group; each C group aggregates 3 seeds.
 
 ## Reproduction
 
@@ -112,8 +125,9 @@ python src/analyse.py
 - H2: an overlap of 0.74 means length contributes a minority of the front once
   1/r⁴ is present, roughly a quarter. It does not mean L/r⁴ is the correct
   hemodynamic cost.
-- Compare A and B: matching values mean the effect is not specific to capillary
-  starts.
+- H3: low weighted Jaccard and low set Jaccard together say "different routes
+  carrying different mass." Reporting both prevents the weighted version from
+  being read as "they almost agree but with slightly different mass."
 - Artery fraction is descriptive: large jumps from BFS to resistance fronts mean
   the radius-aware cost is pulled onto thicker (mostly arterial) vessels.
 
@@ -121,6 +135,9 @@ python src/analyse.py
 
 - Undirected graph; no pressure boundaries, no junction conservation.
 - L/r⁴ is a single-tube proxy.
-- 1% front is source-centered and does not depend on the drain target.
+- 1% front is source-centered; the target only matters for the path-level metrics
+  and the highways.
+- Highways use a single shortest path per (source, target). BFS ties are not
+  enumerated.
 - One cortex sample; seeds measure within-sample robustness only.
 - No functional perfusion ground truth.
