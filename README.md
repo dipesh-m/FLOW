@@ -35,29 +35,29 @@ pip install -r requirements.txt
 
 Python 3.11+.
 
-## Regenerate analysis and figures
+## Full re-run
 
-The experiment outputs are committed. This regenerates `analysis.json` and the summary figures. With `data/V2/HC1.5.gml` present, it also regenerates the seed-0 H3 highway maps.
-
-```powershell
-python src/analyse.py
-```
-
-Expected output with the graph present: `experiments/analysis.json` and five PNGs under `experiments/_figures/`.
-
-## Full re-run (needs the graph)
-
-Place the HC1.5 GML under `data/V2/HC1.5.gml` (~2.5 GB). A pickle cache speeds up subsequent loads.
+Place the HC1.5 GML under `data/V2/HC1.5.gml` (~2.5 GB). A pickle cache speeds up graph loads.
 
 ```powershell
 python src/run_all.py
 python src/analyse.py
 ```
 
-Run a single config:
+Expected output: experiment folders under `experiments/`, `experiments/analysis.json`, and figures under `experiments/_figures/`.
+
+Run one config:
 
 ```powershell
 python src/run_all.py --only exp_A_capillary_seed42
+```
+
+## Regenerate analysis from committed outputs
+
+The experiment outputs are committed. This command refreshes `analysis.json` and figures. Coordinate-based figures require `data/V2/HC1.5.gml`.
+
+```powershell
+python src/analyse.py
 ```
 
 ## Layout
