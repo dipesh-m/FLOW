@@ -37,19 +37,13 @@ Python 3.11+.
 
 ## Regenerate analysis and figures
 
-The experiment outputs are committed. This regenerates `analysis.json` and all figures without needing the graph file.
+The experiment outputs are committed. This regenerates `analysis.json` and the summary figures. With `data/V2/HC1.5.gml` present, it also regenerates the seed-0 H3 highway maps.
 
 ```powershell
 python src/analyse.py
 ```
 
-Expected output: `experiments/analysis.json` and three PNGs under `experiments/_figures/`.
-
-The highway heatmap figures (fig4, fig5) require the graph file for node coordinates:
-
-```powershell
-python src/highways_heatmap.py
-```
+Expected output with the graph present: `experiments/analysis.json` and five PNGs under `experiments/_figures/`.
 
 ## Full re-run (needs the graph)
 
@@ -73,6 +67,6 @@ configs/        16 YAML experiment configs
 data/V2/        graph file (not committed)
 docs/notes.md   methods notes
 experiments/    run outputs + analysis.json + _figures/
-src/            flow_experiment.py, run_all.py, analyse.py, highways_heatmap.py
+src/            flow_experiment.py, run_all.py, analyse.py
 experiments.csv experiment registry
 ```

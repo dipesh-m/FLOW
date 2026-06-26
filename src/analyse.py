@@ -1,4 +1,4 @@
-"""Aggregate FLOW outputs into analysis.json and three figures.
+"""Aggregate FLOW outputs into analysis.json and figures.
 
 Formal metrics:
     H1: mean front_1pct_overlap_with_bfs for resistance, capillary-primary runs.
@@ -23,9 +23,15 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.cm import ScalarMappable
+from matplotlib.collections import LineCollection
+from matplotlib.colors import LogNorm, Normalize
+from matplotlib.lines import Line2D
 
 EXP_DIR = Path("experiments")
 FIG_DIR = EXP_DIR / "_figures"
+GRAPH_PATH = Path("data") / "V2" / "HC1.5.gml"
+GRAPH_CACHE_PATH = Path("data") / "V2" / "HC1.5.gml.pkl"
 
 METHODS = ("bfs", "length", "resistance", "radius")
 SOURCE_GROUP = {
@@ -41,6 +47,10 @@ LABELS = {
     "bfs": "BFS", "length": "Length",
     "resistance": "Resistance", "radius": "Radius",
     "capillary_primary": "Capillary primary", "artery_control": "Artery control",
+}
+SEED0_FIGURES = {
+    "capillary_primary": ("fig4_highways_heatmap_capillary.png", "H3 seed 0: capillary starts to drain"),
+    "artery_control": ("fig5_highways_heatmap_artery.png", "H3 seed 0: artery starts to drain"),
 }
 
 
@@ -351,6 +361,182 @@ def fig3_highways(a: dict[str, Any]) -> None:
     print("saved", out)
 
 
+def _local_graph_path() -> Path | None:
+    if GRAPH_PATH.exists():
+        return GRAPH_PATH
+    if GRAPH_CACHE_PATH.exists():
+        return GRAPH_CACHE_PATH
+    return None
+
+
+def _load_coords_and_edges(graph_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    if graph_path.suffix == ".pkl":
+        import pickle
+
+        with graph_path.open("rb") as f:
+            graph = pickle.load(f)
+        if graph.is_directed():
+            graph = graph.as_undirected(combine_edges="first")
+    else:
+        from flow_experiment import load_graph
+
+        graph = load_graph(graph_path)
+    coords = np.asarray(
+        [list(map(float, c.split(","))) for c in graph.vs["coordinates"]],
+        dtype=np.float64,
+    )
+    edges = np.asarray(graph.get_edgelist(), dtype=np.int64)
+    return coords, edges
+
+
+def _seed0_highway_dirs() -> dict[str, Path]:
+    out: dict[str, Path] = {}
+    for d in _highway_dirs():
+        s = _read_json(d / "highways_summary.json")
+        if s is None or int(s.get("seed", -1)) != 0:
+            continue
+        group = SOURCE_GROUP.get(str(s.get("source_rule")))
+        if group in SEED0_FIGURES:
+            out[group] = d
+    return out
+
+
+def _read_usage(path: Path) -> dict[int, int]:
+    usage: dict[int, int] = {}
+    with path.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            usage[int(row["edge_id"])] = int(row["usage"])
+    return usage
+
+
+def _plot_extent(
+    coords: np.ndarray,
+    edges: np.ndarray,
+    usages: tuple[dict[int, int], dict[int, int]],
+    sources: list[int],
+    target: int,
+) -> tuple[float, float, float, float]:
+    edge_ids = sorted(set(usages[0]) | set(usages[1]))
+    nodes = set(sources)
+    nodes.add(target)
+    if edge_ids:
+        used_edges = edges[np.asarray(edge_ids, dtype=np.int64)]
+        nodes.update(int(n) for n in used_edges.ravel())
+    xy = coords[np.asarray(sorted(nodes), dtype=np.int64), :2]
+    xmin, ymin = xy.min(axis=0)
+    xmax, ymax = xy.max(axis=0)
+    pad = 0.04 * max(float(xmax - xmin), float(ymax - ymin), 1.0)
+    return float(xmin - pad), float(xmax + pad), float(ymin - pad), float(ymax + pad)
+
+
+def _line_segments(
+    coords: np.ndarray, edges: np.ndarray, usage: dict[int, int]
+) -> tuple[np.ndarray, np.ndarray]:
+    edge_ids = np.asarray(sorted(usage), dtype=np.int64)
+    counts = np.asarray([usage[int(eid)] for eid in edge_ids], dtype=np.float64)
+    used_edges = edges[edge_ids]
+    segments = np.stack(
+        [coords[used_edges[:, 0], :2], coords[used_edges[:, 1], :2]],
+        axis=1,
+    )
+    order = np.argsort(counts)
+    return segments[order], counts[order]
+
+
+def _highway_seed0_figure(
+    coords: np.ndarray,
+    edges: np.ndarray,
+    run_dir: Path,
+    out_path: Path,
+    title: str,
+) -> None:
+    summary = _read_json(run_dir / "highways_summary.json")
+    if summary is None:
+        return
+
+    bfs_usage = _read_usage(run_dir / "highways_bfs.csv")
+    resistance_usage = _read_usage(run_dir / "highways_resistance.csv")
+    sources = [int(x) for x in summary["sources"]]
+    target = int(summary["target"])
+    max_count = max(max(bfs_usage.values()), max(resistance_usage.values()))
+    norm = LogNorm(vmin=1, vmax=max_count) if max_count > 1 else Normalize(vmin=0, vmax=1)
+    cmap = "viridis"
+
+    fig, axes = plt.subplots(1, 2, figsize=(15.5, 7.2), constrained_layout=True)
+    xmin, xmax, ymin, ymax = _plot_extent(
+        coords, edges, (bfs_usage, resistance_usage), sources, target
+    )
+    source_xy = coords[np.asarray(sources, dtype=np.int64), :2]
+    target_xy = coords[target, :2]
+
+    for ax, method, usage in (
+        (axes[0], "BFS", bfs_usage),
+        (axes[1], "Resistance", resistance_usage),
+    ):
+        segments, counts = _line_segments(coords, edges, usage)
+        widths = 0.2 + 2.6 * np.log1p(counts) / np.log1p(max_count)
+        lc = LineCollection(
+            segments, array=counts, cmap=cmap, norm=norm, linewidths=widths,
+            alpha=0.88, zorder=2,
+        )
+        ax.add_collection(lc)
+        ax.scatter(
+            source_xy[:, 0], source_xy[:, 1], s=18, marker="o",
+            facecolor="#2b8cbe", edgecolor="white", linewidth=0.35, zorder=4,
+        )
+        ax.scatter(
+            [target_xy[0]], [target_xy[1]], s=95, marker="X",
+            facecolor="#c43c39", edgecolor="black", linewidth=0.5, zorder=5,
+        )
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_title(f"{method} paths")
+        ax.set_xlabel("x coordinate")
+        ax.set_ylabel("y coordinate")
+        ax.grid(alpha=0.18, linewidth=0.6)
+        ax.text(
+            0.02, 0.02,
+            f"{len(usage):,} used edges; {sum(usage.values()):,} path-edge traversals",
+            transform=ax.transAxes, ha="left", va="bottom", fontsize=8,
+            bbox={"facecolor": "white", "edgecolor": "#dddddd", "alpha": 0.86},
+        )
+
+    handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="#2b8cbe",
+               markeredgecolor="white", markersize=7, label="Start nodes"),
+        Line2D([0], [0], marker="X", color="none", markerfacecolor="#c43c39",
+               markeredgecolor="black", markersize=8, label="Drain target"),
+    ]
+    axes[1].legend(handles=handles, frameon=True, facecolor="white", edgecolor="#dddddd",
+                   loc="upper right")
+    cbar = fig.colorbar(ScalarMappable(norm=norm, cmap=cmap), ax=axes, shrink=0.82, pad=0.015)
+    cbar.set_label("Path usage count")
+    fig.suptitle(
+        f"{title}: BFS vs resistance highways ({summary['n_sources']} starts)",
+        fontsize=13,
+    )
+    fig.savefig(out_path, dpi=190)
+    plt.close(fig)
+    print("saved", out_path)
+
+
+def fig4_fig5_highway_seed0_maps() -> None:
+    graph_path = _local_graph_path()
+    if graph_path is None:
+        print("skipped fig4/fig5 highway maps: data/V2/HC1.5.gml not found")
+        return
+    runs = _seed0_highway_dirs()
+    if not runs:
+        return
+    coords, edges = _load_coords_and_edges(graph_path)
+    for group, (filename, title) in SEED0_FIGURES.items():
+        run_dir = runs.get(group)
+        if run_dir is None:
+            continue
+        _highway_seed0_figure(coords, edges, run_dir, FIG_DIR / filename, title)
+
+
 def _fmt(b: dict[str, Any] | None) -> str:
     if not b or b.get("mean") is None:
         return "n/a"
@@ -375,6 +561,7 @@ def main() -> None:
     fig2_radius_overlap(a)
     if a["highways"].get("capillary_primary"):
         fig3_highways(a)
+        fig4_fig5_highway_seed0_maps()
 
     h = a["hypotheses"]
     print("H1 (resistance overlap with BFS, capillary):", _fmt(h["H1"]["value"]))
