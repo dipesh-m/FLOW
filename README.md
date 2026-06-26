@@ -45,6 +45,12 @@ python src/analyse.py
 
 Expected output: `experiments/analysis.json` and three PNGs under `experiments/_figures/`.
 
+The highway heatmap figures (fig4, fig5) require the graph file for node coordinates:
+
+```powershell
+python src/highways_heatmap.py
+```
+
 ## Full re-run (needs the graph)
 
 Place the HC1.5 GML under `data/V2/HC1.5.gml` (~2.5 GB). A pickle cache speeds up subsequent loads.
@@ -67,6 +73,6 @@ configs/        16 YAML experiment configs
 data/V2/        graph file (not committed)
 docs/notes.md   methods notes
 experiments/    run outputs + analysis.json + _figures/
-src/            flow_experiment.py, run_all.py, analyse.py
+src/            flow_experiment.py, run_all.py, analyse.py, highways_heatmap.py
 experiments.csv experiment registry
 ```
