@@ -103,6 +103,8 @@ python src/analyse.py
 python -m unittest discover -s tests
 ```
 
+The tests cover Jaccard metrics, source/target selection, and highway usage counts on a small graph.
+
 ## Layout
 
 ```text
