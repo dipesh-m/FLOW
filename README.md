@@ -25,6 +25,8 @@ Full values in `experiments/analysis.json`. Figures in `experiments/_figures/`.
 
 ## Getting started
 
+Windows PowerShell:
+
 ```powershell
 git clone https://github.com/dipesh-m/FLOW.git
 cd FLOW
@@ -33,9 +35,11 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-On macOS/Linux:
+macOS/Linux:
 
 ```bash
+git clone https://github.com/dipesh-m/FLOW.git
+cd FLOW
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -43,13 +47,31 @@ pip install -r requirements.txt
 
 Python 3.11+.
 
+## Graph files
+
+Place graph files under `data/`:
+
+```text
+data/HC1.5_gurobi.gml
+data/HC1.5_clearmap.gml
+```
+
+The pickle cache is created next to each GML file.
+
 ## Full re-run
 
-Place the HC1.5 GML under `data/V2/HC1.5.gml` (~2.5 GB). A pickle cache speeds up graph loads.
+Default graph:
 
 ```powershell
 python src/run_all.py
 python src/analyse.py
+```
+
+ClearMap graph:
+
+```powershell
+python src/run_all.py --graph data/HC1.5_clearmap.gml
+python src/analyse.py --graph data/HC1.5_clearmap.gml
 ```
 
 Expected output: experiment folders under `experiments/`, `experiments/analysis.json`, and figures under `experiments/_figures/`.
@@ -60,21 +82,47 @@ Run one config:
 python src/run_all.py --only exp_A_capillary_seed42
 ```
 
+Run both graphs into separate folders:
+
+```powershell
+python src/run_all.py --graph data/HC1.5_gurobi.gml --output experiments_gurobi
+python src/analyse.py --experiments experiments_gurobi --graph data/HC1.5_gurobi.gml
+python src/run_all.py --graph data/HC1.5_clearmap.gml --output experiments_clearmap
+python src/analyse.py --experiments experiments_clearmap --graph data/HC1.5_clearmap.gml
+```
+
+Clean output folder before a fresh run:
+
+```powershell
+Remove-Item -Recurse -Force experiments
+```
+
+```bash
+rm -rf experiments
+```
+
 ## Regenerate analysis from committed outputs
 
-The experiment outputs are committed. This command refreshes `analysis.json` and figures. Coordinate-based figures require `data/V2/HC1.5.gml`.
+The experiment outputs are committed. This command refreshes `analysis.json` and figures. Coordinate-based figures require the matching graph file under `data/`.
 
 ```powershell
 python src/analyse.py
+```
+
+## Tests
+
+```powershell
+python -m unittest discover -s tests
 ```
 
 ## Layout
 
 ```text
 configs/        16 YAML experiment configs
-data/V2/        graph file (not committed)
+data/           graph files and pickle caches (not committed)
 docs/notes.md   methods notes
 experiments/    run outputs + analysis.json + _figures/
 src/            flow_experiment.py, run_all.py, analyse.py
+tests/          unit tests
 experiments.csv experiment registry
 ```

@@ -1,7 +1,8 @@
-"""Load the graph once, then run every YAML config in FLOW/configs/.
+"""Load one graph, then run YAML configs in configs/.
 
 Usage from FLOW/:
     python src/run_all.py
+    python src/run_all.py --graph data/HC1.5_clearmap.gml
     python src/run_all.py --only exp_A_capillary_seed42
 """
 
@@ -17,25 +18,32 @@ from flow_experiment import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-GRAPH_PATH = REPO_ROOT / "data" / "V2" / "HC1.5.gml"
-OUTPUT_ROOT = REPO_ROOT / "experiments"
-CONFIG_DIR = REPO_ROOT / "configs"
+DEFAULT_GRAPH_PATH = REPO_ROOT / "data" / "HC1.5_gurobi.gml"
+DEFAULT_OUTPUT_ROOT = REPO_ROOT / "experiments"
+DEFAULT_CONFIG_DIR = REPO_ROOT / "configs"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="Substring filter on config file name.")
+    ap.add_argument("--graph", type=Path, default=DEFAULT_GRAPH_PATH, help="Path to the GML graph.")
+    ap.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_ROOT, help="Experiment output folder.")
+    ap.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR, help="Config folder.")
     args = ap.parse_args()
 
-    configs = sorted(CONFIG_DIR.glob("*.yaml"))
+    graph_path = args.graph if args.graph.is_absolute() else REPO_ROOT / args.graph
+    output_root = args.output if args.output.is_absolute() else REPO_ROOT / args.output
+    config_dir = args.config_dir if args.config_dir.is_absolute() else REPO_ROOT / args.config_dir
+
+    configs = sorted(config_dir.glob("*.yaml"))
     if args.only:
         configs = [c for c in configs if args.only in c.name]
     if not configs:
         raise SystemExit("No configs matched.")
 
     t0 = perf_counter()
-    log(f"Loading graph: {GRAPH_PATH.name}", t0)
-    graph = load_graph(GRAPH_PATH)
+    log(f"Loading graph: {graph_path}", t0)
+    graph = load_graph(graph_path)
     log(f"Loaded {graph.vcount():,} nodes, {graph.ecount():,} edges", t0)
 
     log("Building derived arrays", t0)
@@ -47,9 +55,9 @@ def main() -> None:
         config = load_config(cfg_path)
         log(f">>> {config['run_id']} ({config['mode']})", t0)
         if config["mode"] == "front":
-            out = run_front(graph, arrays, lcc_nodes, config, cfg_path, OUTPUT_ROOT, t0)
+            out = run_front(graph, arrays, lcc_nodes, config, cfg_path, output_root, t0)
         else:
-            out = run_highways(graph, arrays, lcc_nodes, config, cfg_path, OUTPUT_ROOT, t0)
+            out = run_highways(graph, arrays, lcc_nodes, config, cfg_path, output_root, t0)
         log(f"<<< {out}", t0)
 
     log("All runs done.", t0)

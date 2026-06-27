@@ -15,6 +15,7 @@ Artery fractions are descriptive context, not formal tests.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from pathlib import Path
@@ -30,8 +31,8 @@ from matplotlib.lines import Line2D
 
 EXP_DIR = Path("experiments")
 FIG_DIR = EXP_DIR / "_figures"
-GRAPH_PATH = Path("data") / "V2" / "HC1.5.gml"
-GRAPH_CACHE_PATH = Path("data") / "V2" / "HC1.5.gml.pkl"
+GRAPH_PATH = Path("data") / "HC1.5_gurobi.gml"
+GRAPH_CACHE_PATH = GRAPH_PATH.with_suffix(GRAPH_PATH.suffix + ".pkl")
 
 METHODS = ("bfs", "length", "resistance", "radius")
 SOURCE_GROUP = {
@@ -369,6 +370,14 @@ def _local_graph_path() -> Path | None:
     return None
 
 
+def _configure_paths(experiments: Path, graph: Path) -> None:
+    global EXP_DIR, FIG_DIR, GRAPH_PATH, GRAPH_CACHE_PATH
+    EXP_DIR = experiments
+    FIG_DIR = EXP_DIR / "_figures"
+    GRAPH_PATH = graph
+    GRAPH_CACHE_PATH = graph.with_suffix(graph.suffix + ".pkl")
+
+
 def _load_coords_and_edges(graph_path: Path) -> tuple[np.ndarray, np.ndarray]:
     if graph_path.suffix == ".pkl":
         import pickle
@@ -524,7 +533,7 @@ def _highway_seed0_figure(
 def fig4_fig5_highway_seed0_maps() -> None:
     graph_path = _local_graph_path()
     if graph_path is None:
-        print("skipped fig4/fig5 highway maps: data/V2/HC1.5.gml not found")
+        print(f"skipped fig4/fig5 highway maps: graph not found at {GRAPH_PATH}")
         return
     runs = _seed0_highway_dirs()
     if not runs:
@@ -544,6 +553,14 @@ def _fmt(b: dict[str, Any] | None) -> str:
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--experiments", type=Path, default=Path("experiments"),
+                    help="Experiment output folder.")
+    ap.add_argument("--graph", type=Path, default=Path("data") / "HC1.5_gurobi.gml",
+                    help="Path to the GML graph.")
+    args = ap.parse_args()
+    _configure_paths(args.experiments, args.graph)
+
     EXP_DIR.mkdir(parents=True, exist_ok=True)
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     a = summarise()

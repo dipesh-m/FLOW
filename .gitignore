@@ -1,4 +1,6 @@
 data/
+experiments_*/
+verification_runs/
 __pycache__/
 *.pyc
 .pytest_cache/
