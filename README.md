@@ -25,14 +25,24 @@ Full values in `experiments/analysis.json`. Figures in `experiments/_figures/`.
 
 ## Getting started
 
+Windows Command Prompt:
+
+```cmd
+git clone https://github.com/dipesh-m/FLOW.git
+cd FLOW
+python -m venv .venv
+.venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+```
+
 Windows PowerShell:
 
 ```powershell
 git clone https://github.com/dipesh-m/FLOW.git
 cd FLOW
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
 macOS/Linux:
@@ -42,7 +52,7 @@ git clone https://github.com/dipesh-m/FLOW.git
 cd FLOW
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Python 3.11+.
