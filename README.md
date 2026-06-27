@@ -35,16 +35,6 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Windows PowerShell:
-
-```powershell
-git clone https://github.com/dipesh-m/FLOW.git
-cd FLOW
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
-
 macOS/Linux:
 
 ```bash
@@ -97,6 +87,8 @@ To keep two graph runs side by side, write to a named output folder:
 ```powershell
 python src/run_all.py --graph data/HC1.5_gurobi.gml --output experiments_gurobi
 python src/analyse.py --experiments experiments_gurobi --graph data/HC1.5_gurobi.gml
+python src/run_all.py --graph data/HC1.5_clearmap.gml --output experiments_clearmap
+python src/analyse.py --experiments experiments_clearmap --graph data/HC1.5_clearmap.gml
 ```
 
 ## Regenerate analysis from committed outputs
