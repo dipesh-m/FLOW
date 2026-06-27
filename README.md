@@ -60,21 +60,21 @@ The pickle cache is created next to each GML file.
 
 ## Full re-run
 
-Default graph:
+The default graph is `data/HC1.5_gurobi.gml`.
 
 ```powershell
 python src/run_all.py
 python src/analyse.py
 ```
 
-ClearMap graph:
+Use another GML file:
 
 ```powershell
 python src/run_all.py --graph data/HC1.5_clearmap.gml
 python src/analyse.py --graph data/HC1.5_clearmap.gml
 ```
 
-Expected output: experiment folders under `experiments/`, `experiments/analysis.json`, and figures under `experiments/_figures/`.
+Output is written under `experiments/`. A later run overwrites files with the same run names. Copy `experiments/` first if you need to keep a previous result.
 
 Run one config:
 
@@ -82,23 +82,11 @@ Run one config:
 python src/run_all.py --only exp_A_capillary_seed42
 ```
 
-Run both graphs into separate folders:
+To keep two graph runs side by side, write to a named output folder:
 
 ```powershell
 python src/run_all.py --graph data/HC1.5_gurobi.gml --output experiments_gurobi
 python src/analyse.py --experiments experiments_gurobi --graph data/HC1.5_gurobi.gml
-python src/run_all.py --graph data/HC1.5_clearmap.gml --output experiments_clearmap
-python src/analyse.py --experiments experiments_clearmap --graph data/HC1.5_clearmap.gml
-```
-
-Clean output folder before a fresh run:
-
-```powershell
-Remove-Item -Recurse -Force experiments
-```
-
-```bash
-rm -rf experiments
 ```
 
 ## Regenerate analysis from committed outputs
@@ -119,7 +107,7 @@ python -m unittest discover -s tests
 
 ```text
 configs/        16 YAML experiment configs
-data/           graph files and pickle caches (not committed)
+data/           graph files and pickle caches
 docs/notes.md   methods notes
 experiments/    run outputs + analysis.json + _figures/
 src/            flow_experiment.py, run_all.py, analyse.py
