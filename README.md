@@ -49,7 +49,9 @@ Python 3.11+.
 
 ## Graph files
 
-Place graph files under `data/`:
+Download `data.zip` from [Google Drive](https://drive.google.com/drive/folders/1cyFxu5LTmuX3N6EWKnaZU6H7_eBX0QTS?usp=sharing).
+
+Extract it and copy the extracted `data/` folder into the repository root. The expected layout is:
 
 ```text
 data/HC1.5_gurobi.gml
