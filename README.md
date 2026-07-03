@@ -15,13 +15,14 @@ Edge cost determines which vessels get reached first and which carry routed traf
 
 | Hypothesis | Capillary | Artery (control) |
 |---|---|---|
-| H1 length↔BFS | 0.86 (0.04) | 0.79 (0.07) |
-| H1 resistance↔BFS | 0.31 (0.15) | 0.26 (0.16) |
-| H2 resistance↔radius | 0.74 (0.08) | 0.76 (0.07) |
+| H1 length vs BFS | 0.86 (0.04) | 0.79 (0.07) |
+| H1 resistance vs BFS | 0.31 (0.15) | 0.26 (0.16) |
+| H2 resistance vs radius | 0.74 (0.08) | 0.76 (0.07) |
 | H3 weighted Jaccard | 0.025 (0.003) | 0.030 (0.003) |
 | H3 set Jaccard | 0.049 (0.003) | 0.090 (0.003) |
 
 Full values in `experiments/analysis.json`. Figures in `experiments/_figures/`.
+The figures include overlap summaries, highway maps, and BFS-vs-resistance front maps.
 
 ## Getting started
 
@@ -101,6 +102,26 @@ The experiment outputs are committed. This command refreshes `analysis.json` and
 python src/analyse.py
 ```
 
+## 3-D visualization
+
+The Napari viewer requires a workstation with working OpenGL support.
+
+```powershell
+python -m pip install "napari[all]"
+```
+
+Front-growth view:
+
+```powershell
+python src/visualize.py --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi --run exp_A_capillary_seed0 --methods bfs resistance
+```
+
+Highway view:
+
+```powershell
+python src/visualize.py --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi --run exp_C_highways_capillary_seed0
+```
+
 ## Tests
 
 ```powershell
@@ -116,7 +137,7 @@ configs/        16 YAML experiment configs
 data/           graph files and pickle caches
 docs/notes.md   methods notes
 experiments/    run outputs + analysis.json + _figures/
-src/            flow_experiment.py, run_all.py, analyse.py
+src/            flow_experiment.py, run_all.py, analyse.py, visualize.py
 tests/          unit tests
 experiments.csv experiment registry
 ```

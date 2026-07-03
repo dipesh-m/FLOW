@@ -49,9 +49,13 @@ LABELS = {
     "resistance": "Resistance", "radius": "Radius",
     "capillary_primary": "Capillary primary", "artery_control": "Artery control",
 }
-SEED0_FIGURES = {
-    "capillary_primary": ("fig4_highways_heatmap_capillary.png", "H3 seed 0: capillary starts to drain"),
-    "artery_control": ("fig5_highways_heatmap_artery.png", "H3 seed 0: artery starts to drain"),
+HIGHWAY_FIGURES = {
+    "capillary_primary": ("fig4_highways_heatmap_capillary", "H3 seed {seed}: capillary starts to drain"),
+    "artery_control": ("fig5_highways_heatmap_artery", "H3 seed {seed}: artery starts to drain"),
+}
+FRONT_FIGURES = {
+    "capillary_primary": ("fig6_front_map_capillary", "Seed {seed}: capillary starts"),
+    "artery_control": ("fig7_front_map_artery", "Seed {seed}: artery starts"),
 }
 
 
@@ -279,7 +283,7 @@ def fig1_front_overlap(a: dict[str, Any]) -> None:
             ha="right", va="bottom")
     ax.set_xticks(x)
     ax.set_xticklabels([LABELS[m] for m in methods])
-    ax.set_ylabel("1% front overlap with BFS (mean ± std)")
+    ax.set_ylabel("1% front overlap with BFS (mean +/- std)")
     ax.set_ylim(0, 1.18)
     ax.set_title("H1: How much does the early front diverge from BFS?")
     n_cap = a["front_1pct"]["capillary_primary"]["n_sources"]
@@ -312,7 +316,7 @@ def fig2_radius_overlap(a: dict[str, Any]) -> None:
             ha="right", va="bottom")
     ax.set_xticks(x)
     ax.set_xticklabels([LABELS[g] for g in groups])
-    ax.set_ylabel("Resistance ↔ radius-only 1% front overlap")
+    ax.set_ylabel("Resistance vs radius-only 1% front overlap")
     ax.set_ylim(0, 1.18)
     ax.set_title("H2: Dropping length still changes about a quarter of the front")
     out = FIG_DIR / "fig2_h2_radius_overlap.png"
@@ -346,7 +350,7 @@ def fig3_highways(a: dict[str, Any]) -> None:
             ha="right", va="bottom", transform=ax.transAxes)
     ax.set_xticks(x)
     ax.set_xticklabels(metric_labels)
-    ax.set_ylabel("BFS ↔ resistance highway overlap (mean ± std)")
+    ax.set_ylabel("BFS vs resistance highway overlap (mean +/- std)")
     ax.set_title("H3: BFS and resistance highways overlap")
     h_cap = a["highways"].get("capillary_primary") or {}
     h_art = a["highways"].get("artery_control") or {}
@@ -378,7 +382,9 @@ def _configure_paths(experiments: Path, graph: Path) -> None:
     GRAPH_CACHE_PATH = graph.with_suffix(graph.suffix + ".pkl")
 
 
-def _load_coords_and_edges(graph_path: Path) -> tuple[np.ndarray, np.ndarray]:
+def _load_graph_arrays(graph_path: Path) -> tuple[Any, dict[str, Any]]:
+    from flow_experiment import graph_arrays, load_graph
+
     if graph_path.suffix == ".pkl":
         import pickle
 
@@ -387,27 +393,38 @@ def _load_coords_and_edges(graph_path: Path) -> tuple[np.ndarray, np.ndarray]:
         if graph.is_directed():
             graph = graph.as_undirected(combine_edges="first")
     else:
-        from flow_experiment import load_graph
-
         graph = load_graph(graph_path)
-    coords = np.asarray(
-        [list(map(float, c.split(","))) for c in graph.vs["coordinates"]],
-        dtype=np.float64,
-    )
-    edges = np.asarray(graph.get_edgelist(), dtype=np.int64)
-    return coords, edges
+    return graph, graph_arrays(graph)
 
 
-def _seed0_highway_dirs() -> dict[str, Path]:
-    out: dict[str, Path] = {}
+def _highway_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
+    out: dict[str, dict[int, Path]] = {g: {} for g in HIGHWAY_FIGURES}
     for d in _highway_dirs():
         s = _read_json(d / "highways_summary.json")
-        if s is None or int(s.get("seed", -1)) != 0:
+        if s is None:
             continue
         group = SOURCE_GROUP.get(str(s.get("source_rule")))
-        if group in SEED0_FIGURES:
-            out[group] = d
+        if group in out:
+            out[group][int(s.get("seed", -1))] = d
     return out
+
+
+def _front_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
+    out: dict[str, dict[int, Path]] = {g: {} for g in FRONT_FIGURES}
+    for d in _front_dirs():
+        s = _read_json(d / "summary.json")
+        if s is None:
+            continue
+        group = SOURCE_GROUP.get(str(s.get("source_rule")))
+        if group in out:
+            out[group][int(s.get("seed", -1))] = d
+    return out
+
+
+def _seeded_filename(stem: str, seed: int) -> str:
+    if seed == 0:
+        return f"{stem}.png"
+    return f"{stem}_seed{seed}.png"
 
 
 def _read_usage(path: Path) -> dict[int, int]:
@@ -452,7 +469,7 @@ def _line_segments(
     return segments[order], counts[order]
 
 
-def _highway_seed0_figure(
+def _highway_figure(
     coords: np.ndarray,
     edges: np.ndarray,
     run_dir: Path,
@@ -530,20 +547,127 @@ def _highway_seed0_figure(
     print("saved", out_path)
 
 
-def fig4_fig5_highway_seed0_maps() -> None:
+def _front_extent(
+    coords: np.ndarray,
+    front_nodes: tuple[np.ndarray, np.ndarray],
+    sources: list[int],
+    target: int,
+) -> tuple[float, float, float, float]:
+    nodes = set(sources)
+    nodes.add(target)
+    for arr in front_nodes:
+        nodes.update(int(n) for n in arr.tolist())
+    xy = coords[np.asarray(sorted(nodes), dtype=np.int64), :2]
+    xmin, ymin = xy.min(axis=0)
+    xmax, ymax = xy.max(axis=0)
+    pad = 0.04 * max(float(xmax - xmin), float(ymax - ymin), 1.0)
+    return float(xmin - pad), float(xmax + pad), float(ymin - pad), float(ymax + pad)
+
+
+def _front_map_figure(
+    graph: Any,
+    arrays: dict[str, Any],
+    run_dir: Path,
+    out_path: Path,
+    title: str,
+) -> None:
+    from flow_experiment import run_method
+
+    summary = _read_json(run_dir / "summary.json")
+    if summary is None:
+        return
+
+    coords = arrays["coords"]
+    sources = [int(x) for x in summary["sources"]]
+    target = int(summary["target"])
+    front_by_method: dict[str, np.ndarray] = {}
+    for method in ("bfs", "resistance"):
+        chunks = []
+        for idx, source in enumerate(sources, start=1):
+            result = run_method(graph, arrays, method, idx, source, target)
+            chunks.append(result.front_nodes)
+        front_by_method[method] = np.unique(np.concatenate(chunks))
+
+    bfs_nodes = front_by_method["bfs"]
+    resistance_nodes = front_by_method["resistance"]
+    shared = len(set(bfs_nodes.tolist()) & set(resistance_nodes.tolist()))
+    union = len(set(bfs_nodes.tolist()) | set(resistance_nodes.tolist()))
+    overlap = 0.0 if union == 0 else shared / union
+
+    fig, axes = plt.subplots(1, 2, figsize=(15.5, 7.2), constrained_layout=True)
+    xmin, xmax, ymin, ymax = _front_extent(coords, (bfs_nodes, resistance_nodes), sources, target)
+    source_xy = coords[np.asarray(sources, dtype=np.int64), :2]
+    target_xy = coords[target, :2]
+
+    for ax, method, nodes, colour in (
+        (axes[0], "BFS", bfs_nodes, COLOURS["bfs"]),
+        (axes[1], "Resistance", resistance_nodes, COLOURS["resistance"]),
+    ):
+        xy = coords[nodes, :2]
+        ax.scatter(xy[:, 0], xy[:, 1], s=0.35, c=colour, alpha=0.35, linewidths=0, rasterized=True)
+        ax.scatter(
+            source_xy[:, 0], source_xy[:, 1], s=34, marker="o",
+            facecolor="#2b8cbe", edgecolor="white", linewidth=0.45, zorder=4,
+        )
+        ax.scatter(
+            [target_xy[0]], [target_xy[1]], s=95, marker="X",
+            facecolor="#c43c39", edgecolor="black", linewidth=0.5, zorder=5,
+        )
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_title(f"{method} 1% front")
+        ax.set_xlabel("x coordinate")
+        ax.set_ylabel("y coordinate")
+        ax.grid(alpha=0.18, linewidth=0.6)
+        ax.text(
+            0.02, 0.02,
+            f"{len(nodes):,} unique front nodes from {len(sources)} starts",
+            transform=ax.transAxes, ha="left", va="bottom", fontsize=8,
+            bbox={"facecolor": "white", "edgecolor": "#dddddd", "alpha": 0.86},
+        )
+
+    handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="#2b8cbe",
+               markeredgecolor="white", markersize=7, label="Start nodes"),
+        Line2D([0], [0], marker="X", color="none", markerfacecolor="#c43c39",
+               markeredgecolor="black", markersize=8, label="Drain target"),
+    ]
+    axes[1].legend(handles=handles, frameon=True, facecolor="white", edgecolor="#dddddd",
+                   loc="upper right")
+    fig.suptitle(
+        f"{title}: BFS vs resistance 1% fronts; set overlap {overlap:.3f}",
+        fontsize=13,
+    )
+    fig.savefig(out_path, dpi=190)
+    plt.close(fig)
+    print("saved", out_path)
+
+
+def fig_spatial_maps() -> None:
     graph_path = _local_graph_path()
     if graph_path is None:
-        print(f"skipped fig4/fig5 highway maps: graph not found at {GRAPH_PATH}")
+        print(f"skipped coordinate maps: graph not found at {GRAPH_PATH}")
         return
-    runs = _seed0_highway_dirs()
-    if not runs:
-        return
-    coords, edges = _load_coords_and_edges(graph_path)
-    for group, (filename, title) in SEED0_FIGURES.items():
-        run_dir = runs.get(group)
-        if run_dir is None:
-            continue
-        _highway_seed0_figure(coords, edges, run_dir, FIG_DIR / filename, title)
+    graph, arrays = _load_graph_arrays(graph_path)
+    coords = arrays["coords"]
+    edges = arrays["edge_endpoints"]
+
+    for group, runs in _highway_dirs_by_group_seed().items():
+        stem, title_template = HIGHWAY_FIGURES[group]
+        for seed, run_dir in sorted(runs.items()):
+            _highway_figure(
+                coords, edges, run_dir, FIG_DIR / _seeded_filename(stem, seed),
+                title_template.format(seed=seed),
+            )
+
+    for group, runs in _front_dirs_by_group_seed().items():
+        stem, title_template = FRONT_FIGURES[group]
+        for seed, run_dir in sorted(runs.items()):
+            _front_map_figure(
+                graph, arrays, run_dir, FIG_DIR / _seeded_filename(stem, seed),
+                title_template.format(seed=seed),
+            )
 
 
 def _fmt(b: dict[str, Any] | None) -> str:
@@ -578,7 +702,7 @@ def main() -> None:
     fig2_radius_overlap(a)
     if a["highways"].get("capillary_primary"):
         fig3_highways(a)
-        fig4_fig5_highway_seed0_maps()
+        fig_spatial_maps()
 
     h = a["hypotheses"]
     print("H1 (resistance overlap with BFS, capillary):", _fmt(h["H1"]["value"]))

@@ -6,8 +6,8 @@
 |---|---:|---|
 | `bfs` | 1 | igraph BFS, no weights |
 | `length` | L | physical distance |
-| `resistance` | L / r⁴ | `r = max(r, 1e-6)` |
-| `radius` | 1 / r⁴ | ablation: drops L from resistance |
+| `resistance` | L / r^4 | `r = max(r, 1e-6)` |
+| `radius` | 1 / r^4 | ablation: drops L from resistance |
 
 ## Source selection
 
@@ -22,15 +22,15 @@ Largest-radius vein in the LCC. Fixed across all runs.
 
 ## Front metric
 
-1% closest reachable nodes under each cost. Overlap computed as `|front_a ∩ front_b| / |front_a|`.
+1% closest reachable nodes under each cost. Overlap computed as `|front_a intersection front_b| / |front_a|`.
 
 ## Highways metric
 
 100 shortest source-to-target paths under BFS and resistance. Per-edge usage counts, then:
 
 ```text
-weighted_jaccard = Σ min(usage_bfs, usage_res) / Σ max(usage_bfs, usage_res)
-set_jaccard      = |used_bfs ∩ used_res| / |used_bfs ∪ used_res|
+weighted_jaccard = sum min(usage_bfs, usage_res) / sum max(usage_bfs, usage_res)
+set_jaccard      = |used_bfs intersection used_res| / |used_bfs union used_res|
 ```
 
 ## Experiment groups
