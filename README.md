@@ -105,21 +105,31 @@ python src/analyse.py
 ## 3-D visualization
 
 The Napari viewer requires a workstation with working OpenGL support.
+The command takes a run id from the experiment output folder. Front runs (`exp_A_*`, `exp_B_*`) show animated 1% front growth. Highway runs (`exp_C_*`) show source-to-drain highway edges, with edge width grouped by usage count.
 
 ```powershell
 python -m pip install "napari[all]"
 ```
 
-Front-growth view:
+Default output folder:
 
 ```powershell
-python src/visualize.py --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi --run exp_A_capillary_seed0 --methods bfs resistance
+python src/visualize.py exp_A_capillary_seed0 --methods bfs resistance
+python src/visualize.py exp_C_highways_capillary_seed0
 ```
 
-Highway view:
+Named output folder:
 
 ```powershell
-python src/visualize.py --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi --run exp_C_highways_capillary_seed0
+python src/visualize.py exp_A_capillary_seed0 --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi --methods bfs resistance
+python src/visualize.py exp_C_highways_capillary_seed0 --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi
+```
+
+Windows workstation without admin Python:
+
+```cmd
+visualize_windows.bat exp_A_capillary_seed0
+visualize_windows.bat exp_C_highways_capillary_seed0
 ```
 
 ## Tests

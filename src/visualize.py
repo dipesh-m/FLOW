@@ -198,17 +198,21 @@ def visualize_highways(viewer, graph, arrays, run_dir: Path, summary: dict) -> N
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run", required=True, help="Run id under the experiments folder.")
+    parser.add_argument("run_id", nargs="?", help="Run id under the experiments folder.")
+    parser.add_argument("--run", dest="run_option", help="Run id under the experiments folder.")
     parser.add_argument("--graph", type=Path, default=DEFAULT_GRAPH_PATH, help="Path to the GML graph.")
     parser.add_argument("--experiments", type=Path, default=DEFAULT_EXP_DIR, help="Experiment output folder.")
     parser.add_argument("--methods", nargs="+", default=["bfs", "resistance"],
                         choices=["bfs", "length", "resistance", "radius"],
                         help="Front methods to animate.")
     args = parser.parse_args()
+    run_id = args.run_option or args.run_id
+    if not run_id:
+        raise SystemExit("Run id required. Example: python src/visualize.py exp_A_capillary_seed0")
 
     graph_path = _abs_path(args.graph)
     exp_dir = _abs_path(args.experiments)
-    run_dir = exp_dir / args.run
+    run_dir = exp_dir / run_id
     if not run_dir.exists():
         raise SystemExit(f"Run dir not found: {run_dir}")
     summary = _load_summary(run_dir)
@@ -223,7 +227,7 @@ def main() -> None:
     graph = load_graph(graph_path)
     arrays = graph_arrays(graph)
 
-    viewer = napari.Viewer(title=f"FLOW {args.run}", ndisplay=3)
+    viewer = napari.Viewer(title=f"FLOW {run_id}", ndisplay=3)
     _print_gpu_info()
     if summary.get("mode") == "highways":
         visualize_highways(viewer, graph, arrays, run_dir, summary)
