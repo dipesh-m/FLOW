@@ -27,10 +27,16 @@ MAX_FRONT_POINTS = 6000
 BACKGROUND_POINTS = 60_000
 
 METHOD_COLOURS = {
-    "bfs": (0.45, 0.45, 0.45, 1.0),
-    "length": (0.12, 0.47, 0.71, 1.0),
-    "resistance": (0.77, 0.24, 0.22, 1.0),
-    "radius": (0.17, 0.63, 0.37, 1.0),
+    "bfs": [0.0, 0.62, 1.0, 1.0],
+    "length": [1.0, 0.68, 0.05, 1.0],
+    "resistance": [1.0, 0.16, 0.10, 1.0],
+    "radius": [0.10, 0.90, 0.36, 1.0],
+}
+METHOD_COLOUR_LABELS = {
+    "bfs": "blue",
+    "length": "gold",
+    "resistance": "red",
+    "radius": "green",
 }
 METHOD_LABELS = {
     "bfs": "BFS (hop count)",
@@ -38,8 +44,9 @@ METHOD_LABELS = {
     "resistance": "Resistance (L/r^4)",
     "radius": "Radius (1/r^4)",
 }
-SOURCE_COLOUR = (1.0, 1.0, 0.2, 1.0)
-TARGET_COLOUR = (0.0, 0.85, 0.95, 1.0)
+BACKGROUND_COLOUR = [0.16, 0.17, 0.18, 0.10]
+SOURCE_COLOUR = [1.0, 0.95, 0.0, 1.0]
+TARGET_COLOUR = [0.0, 0.95, 1.0, 1.0]
 
 
 def _abs_path(path: Path) -> Path:
@@ -91,9 +98,10 @@ def _background(viewer, coords: np.ndarray, lcc: np.ndarray) -> None:
     viewer.add_points(
         coords[idx],
         name="LCC sample",
-        size=0.7,
-        face_color=(0.7, 0.7, 0.7, 0.18),
+        size=0.55,
+        face_color=BACKGROUND_COLOUR,
         border_width=0,
+        blending="translucent_no_depth",
     )
 
 
@@ -109,6 +117,14 @@ def _front_growth(coords: np.ndarray, front_nodes: np.ndarray, distance: np.ndar
         frames.append(present)
         xyz.append(np.repeat(coords[node][None, :], len(present), axis=0))
     return np.column_stack([np.concatenate(frames), np.concatenate(xyz)])
+
+
+def _play_time_axis(viewer, fps: int) -> None:
+    viewer.dims.set_point(0, 0)
+    qt_dims = getattr(getattr(viewer, "window", None), "_qt_viewer", None)
+    qt_dims = getattr(qt_dims, "dims", None)
+    if qt_dims is not None:
+        qt_dims.play(axis=0, fps=fps, loop_mode="loop")
 
 
 def visualize_front(viewer, graph, arrays, summary, methods: list[str]) -> None:
@@ -131,24 +147,30 @@ def visualize_front(viewer, graph, arrays, summary, methods: list[str]) -> None:
         viewer.add_points(
             np.concatenate(chunks, axis=0),
             name=f"1% front: {METHOD_LABELS.get(method, method)}",
-            size=1.8,
-            face_color=METHOD_COLOURS.get(method, (1, 0, 1, 1)),
+            size=3.0,
+            face_color=METHOD_COLOURS.get(method, [1, 0, 1, 1]),
             border_width=0,
+            blending="additive",
         )
 
     viewer.add_points(coords[sources], name="source nodes", size=16,
-                      face_color=SOURCE_COLOUR, border_color="black")
+                      face_color=SOURCE_COLOUR, border_color="black",
+                      blending="translucent_no_depth")
     viewer.add_points(coords[[target]], name="drain target", size=24,
-                      face_color=TARGET_COLOUR, border_color="black")
+                      face_color=TARGET_COLOUR, border_color="black",
+                      blending="translucent_no_depth")
 
     viewer.text_overlay.visible = True
     viewer.text_overlay.text = (
         f"{summary['run_id']}\n"
         "yellow: sources\ncyan: drain target\n"
-        + "\n".join(METHOD_LABELS.get(method, method) for method in methods)
+        + "\n".join(
+            f"{METHOD_COLOUR_LABELS.get(method, 'magenta')}: {METHOD_LABELS.get(method, method)}"
+            for method in methods
+        )
     )
     viewer.text_overlay.font_size = 10
-    viewer.dims.set_point(0, 0)
+    _play_time_axis(viewer, fps=8)
 
 
 def _usage_masks(usage: np.ndarray) -> list[tuple[str, np.ndarray, float]]:
@@ -158,6 +180,26 @@ def _usage_masks(usage: np.ndarray) -> list[tuple[str, np.ndarray, float]]:
         ("usage 5-9", (usage >= 5) & (usage <= 9), 2.0),
         ("usage >=10", usage >= 10, 3.2),
     ]
+
+
+def _highway_first_frames(usage: np.ndarray) -> np.ndarray:
+    order = np.lexsort((np.arange(len(usage)), -usage))
+    first_frames = np.empty(len(usage), dtype=np.int64)
+    first_frames[order] = np.floor(np.linspace(0, N_FRAMES - 1, len(usage))).astype(int)
+    return first_frames
+
+
+def _animated_vectors(vectors: np.ndarray, first_frames: np.ndarray) -> np.ndarray:
+    counts = N_FRAMES - first_frames
+    vector_idx = np.repeat(np.arange(len(vectors)), counts)
+    frames = np.concatenate(
+        [np.arange(first, N_FRAMES, dtype=np.float64) for first in first_frames]
+    )
+    animated = np.zeros((len(vector_idx), 2, 4), dtype=np.float64)
+    animated[:, 0, 0] = frames
+    animated[:, 0, 1:] = vectors[vector_idx, 0]
+    animated[:, 1, 1:] = vectors[vector_idx, 1]
+    return animated
 
 
 def visualize_highways(viewer, graph, arrays, run_dir: Path, summary: dict) -> None:
@@ -172,28 +214,34 @@ def visualize_highways(viewer, graph, arrays, run_dir: Path, summary: dict) -> N
             continue
         origin = coords[edges[:, 0]]
         vectors = np.stack([origin, coords[edges[:, 1]] - origin], axis=1)
+        first_frames = _highway_first_frames(usage)
         for label, mask, width in _usage_masks(usage):
             if not np.any(mask):
                 continue
             viewer.add_vectors(
-                vectors[mask],
+                _animated_vectors(vectors[mask], first_frames[mask]),
                 name=f"{METHOD_LABELS[method]} highways, {label}",
                 edge_width=width,
                 vector_style="line",
                 edge_color=METHOD_COLOURS[method],
+                opacity=0.95,
+                blending="additive",
             )
 
     viewer.add_points(coords[sources], name="source nodes", size=12,
-                      face_color=SOURCE_COLOUR, border_color="black")
+                      face_color=SOURCE_COLOUR, border_color="black",
+                      blending="translucent_no_depth")
     viewer.add_points(coords[[target]], name="drain target", size=22,
-                      face_color=TARGET_COLOUR, border_color="black")
+                      face_color=TARGET_COLOUR, border_color="black",
+                      blending="translucent_no_depth")
     viewer.text_overlay.visible = True
     viewer.text_overlay.text = (
         f"{summary['run_id']}\n"
         "yellow: sources\ncyan: drain target\n"
-        "gray: BFS highways\nred: resistance highways"
+        "blue: BFS highways\nred: resistance highways"
     )
     viewer.text_overlay.font_size = 10
+    _play_time_axis(viewer, fps=8)
 
 
 def main() -> None:
@@ -221,7 +269,7 @@ def main() -> None:
     try:
         import napari
     except ImportError as exc:
-        raise SystemExit("napari not installed. Run: python -m pip install \"napari[all]\"") from exc
+        raise SystemExit("napari not installed. Run: python -m pip install -r requirements.txt") from exc
 
     print(f"Loading graph: {graph_path}")
     graph = load_graph(graph_path)

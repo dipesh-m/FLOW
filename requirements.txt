@@ -2,3 +2,5 @@ numpy
 igraph
 pyyaml
 matplotlib
+napari
+pyqt6
