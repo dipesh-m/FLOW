@@ -125,13 +125,6 @@ python src/visualize.py exp_A_capillary_seed0 --graph data/HC1.5_gurobi.gml --ex
 python src/visualize.py exp_C_highways_capillary_seed0 --graph data/HC1.5_gurobi.gml --experiments experiments_gurobi
 ```
 
-Windows workstation without admin Python:
-
-```cmd
-visualize_windows.bat exp_A_capillary_seed0
-visualize_windows.bat exp_C_highways_capillary_seed0
-```
-
 ## Tests
 
 ```powershell
