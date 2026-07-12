@@ -1,0 +1,7 @@
+# Capillary-primary front run, seed 200.
+run_id: exp_A_capillary_seed200
+mode: front
+source_rule: diverse_capillaries_in_lcc
+seed: 200
+num_sources: 5
+source_pool_size: 200

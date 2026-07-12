@@ -1,0 +1,433 @@
+{
+  "lcc_nodes": 813874,
+  "lcc_artery_fraction": 0.037979,
+  "front_1pct": {
+    "capillary_primary": {
+      "n_experiments": 5,
+      "n_sources": 25,
+      "overlap_with_bfs": {
+        "bfs": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 25
+        },
+        "length": {
+          "mean": 0.8208946,
+          "std": 0.06323752879619823,
+          "n": 25
+        },
+        "resistance": {
+          "mean": 0.45015468000000003,
+          "std": 0.19845432127417467,
+          "n": 25
+        },
+        "radius": {
+          "mean": 0.4210322,
+          "std": 0.16431213391185287,
+          "n": 25
+        }
+      },
+      "resistance_overlap_with_radius": {
+        "mean": 0.75183092,
+        "std": 0.07440436598296277,
+        "n": 25
+      },
+      "artery_fraction": {
+        "bfs": {
+          "mean": 0.03818132,
+          "std": 0.029037701168366157,
+          "n": 25
+        },
+        "length": {
+          "mean": 0.03008112,
+          "std": 0.024345591067857303,
+          "n": 25
+        },
+        "resistance": {
+          "mean": 0.19847136,
+          "std": 0.20054906107585413,
+          "n": 25
+        },
+        "radius": {
+          "mean": 0.19889904,
+          "std": 0.1739262747309618,
+          "n": 25
+        }
+      },
+      "per_experiment": {
+        "exp_A_capillary_seed0": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.467289,
+            "std": 0.16391084650961937,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7507004,
+            "std": 0.05733587659397911,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.19275,
+            "std": 0.2044389151617177,
+            "n": 5
+          }
+        },
+        "exp_A_capillary_seed100": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.3952076,
+            "std": 0.1770850851054374,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7554190000000001,
+            "std": 0.0044069675515029496,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.173507,
+            "std": 0.22446226666970107,
+            "n": 5
+          }
+        },
+        "exp_A_capillary_seed200": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.4602114,
+            "std": 0.18461223169470653,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.6995578,
+            "std": 0.12664369732916045,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.2131238,
+            "std": 0.18301163258301367,
+            "n": 5
+          }
+        },
+        "exp_A_capillary_seed300": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.4500612,
+            "std": 0.30722612752938183,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7810764,
+            "std": 0.08134290234740828,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.28368140000000003,
+            "std": 0.2770209551582696,
+            "n": 5
+          }
+        },
+        "exp_A_capillary_seed42": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.4780042,
+            "std": 0.21064747207882653,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.772401,
+            "std": 0.04714464891162093,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.1292946,
+            "std": 0.150867760324398,
+            "n": 5
+          }
+        }
+      }
+    },
+    "artery_control": {
+      "n_experiments": 5,
+      "n_sources": 25,
+      "overlap_with_bfs": {
+        "bfs": {
+          "mean": 1.0,
+          "std": 0.0,
+          "n": 25
+        },
+        "length": {
+          "mean": 0.72575572,
+          "std": 0.13789837162367075,
+          "n": 25
+        },
+        "resistance": {
+          "mean": 0.31945928,
+          "std": 0.19259350544789924,
+          "n": 25
+        },
+        "radius": {
+          "mean": 0.32488084,
+          "std": 0.1901857130897937,
+          "n": 25
+        }
+      },
+      "resistance_overlap_with_radius": {
+        "mean": 0.75941504,
+        "std": 0.07045152154051276,
+        "n": 25
+      },
+      "artery_fraction": {
+        "bfs": {
+          "mean": 0.12608008,
+          "std": 0.09550136376378786,
+          "n": 25
+        },
+        "length": {
+          "mean": 0.15216524,
+          "std": 0.1182785411984073,
+          "n": 25
+        },
+        "resistance": {
+          "mean": 0.4590906,
+          "std": 0.2849905973424094,
+          "n": 25
+        },
+        "radius": {
+          "mean": 0.41591048,
+          "std": 0.2453047506285328,
+          "n": 25
+        }
+      },
+      "per_experiment": {
+        "exp_B_artery_seed0": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.3005898,
+            "std": 0.217607040721802,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7661096,
+            "std": 0.06394861403736597,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.4504546,
+            "std": 0.3610751664429444,
+            "n": 5
+          }
+        },
+        "exp_B_artery_seed100": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.2518062,
+            "std": 0.048092159955651824,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7491522,
+            "std": 0.0770149081262842,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.5186532,
+            "std": 0.18856136661230477,
+            "n": 5
+          }
+        },
+        "exp_B_artery_seed200": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.4098302,
+            "std": 0.26113220782909946,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7725978,
+            "std": 0.06815275322538336,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.3566478,
+            "std": 0.3045286333396254,
+            "n": 5
+          }
+        },
+        "exp_B_artery_seed300": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.224699,
+            "std": 0.14680515957043197,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.7249446,
+            "std": 0.09889197634439309,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.558491,
+            "std": 0.2977353928885513,
+            "n": 5
+          }
+        },
+        "exp_B_artery_seed42": {
+          "n_sources": 5,
+          "resistance_overlap_with_bfs": {
+            "mean": 0.4103712,
+            "std": 0.21263960293933956,
+            "n": 5
+          },
+          "resistance_overlap_with_radius": {
+            "mean": 0.784271,
+            "std": 0.05170020845702653,
+            "n": 5
+          },
+          "resistance_artery_fraction": {
+            "mean": 0.41120639999999997,
+            "std": 0.32732314601674595,
+            "n": 5
+          }
+        }
+      }
+    }
+  },
+  "highways": {
+    "capillary_primary": {
+      "n_runs": 3,
+      "n_sources": 100,
+      "weighted_jaccard_usage": {
+        "mean": 0.034155603342302596,
+        "std": 0.001129699306428275,
+        "n": 3
+      },
+      "set_jaccard_usage": {
+        "mean": 0.05432386231563065,
+        "std": 0.005123820561438762,
+        "n": 3
+      },
+      "per_run": [
+        {
+          "run_id": "exp_C_highways_capillary_seed0",
+          "seed": 0,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.03449175926616452,
+          "set_jaccard_usage": 0.060231486683897065
+        },
+        {
+          "run_id": "exp_C_highways_capillary_seed100",
+          "seed": 100,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.03289598064052634,
+          "set_jaccard_usage": 0.05165026056745802
+        },
+        {
+          "run_id": "exp_C_highways_capillary_seed42",
+          "seed": 42,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.035079070120216924,
+          "set_jaccard_usage": 0.05108983969553685
+        }
+      ]
+    },
+    "artery_control": {
+      "n_runs": 3,
+      "n_sources": 100,
+      "weighted_jaccard_usage": {
+        "mean": 0.029480429111423085,
+        "std": 0.0012621201006434934,
+        "n": 3
+      },
+      "set_jaccard_usage": {
+        "mean": 0.07583024037830449,
+        "std": 0.007205190496667026,
+        "n": 3
+      },
+      "per_run": [
+        {
+          "run_id": "exp_C_highways_artery_seed0",
+          "seed": 0,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.028769085423460215,
+          "set_jaccard_usage": 0.0675187552097805
+        },
+        {
+          "run_id": "exp_C_highways_artery_seed100",
+          "seed": 100,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.02873453853472883,
+          "set_jaccard_usage": 0.07966321243523317
+        },
+        {
+          "run_id": "exp_C_highways_artery_seed42",
+          "seed": 42,
+          "n_sources": 100,
+          "weighted_jaccard_usage": 0.030937663376080206,
+          "set_jaccard_usage": 0.08030875348989983
+        }
+      ]
+    }
+  },
+  "hypotheses": {
+    "H1": {
+      "statement": "Radius-aware costs reshape the 1% front relative to BFS from capillary starts; length-only stays BFS-like.",
+      "metric": "mean front_1pct_overlap_with_bfs (resistance, capillary-primary)",
+      "value": {
+        "mean": 0.45015468000000003,
+        "std": 0.19845432127417467,
+        "n": 25
+      },
+      "reference_length_overlap_with_bfs": {
+        "mean": 0.8208946,
+        "std": 0.06323752879619823,
+        "n": 25
+      }
+    },
+    "H2": {
+      "statement": "Radius dominates the resistance cost, but length is not negligible: dropping it (resistance to radius) still changes about a quarter of the 1% front.",
+      "metric": "mean front_1pct_overlap_with_radius (resistance, capillary-primary)",
+      "value": {
+        "mean": 0.75183092,
+        "std": 0.07440436598296277,
+        "n": 25
+      }
+    },
+    "H3": {
+      "statement": "BFS and resistance pick different high-usage source-to-target highways.",
+      "metric_primary": "weighted_jaccard_usage (capillary-primary highways, mean over seeds)",
+      "weighted_jaccard": {
+        "mean": 0.034155603342302596,
+        "std": 0.001129699306428275,
+        "n": 3
+      },
+      "set_jaccard": {
+        "mean": 0.05432386231563065,
+        "std": 0.005123820561438762,
+        "n": 3
+      }
+    }
+  },
+  "descriptive_context": {
+    "capillary_primary_resistance_artery_fraction": {
+      "mean": 0.19847136,
+      "std": 0.20054906107585413,
+      "n": 25
+    },
+    "capillary_primary_bfs_artery_fraction": {
+      "mean": 0.03818132,
+      "std": 0.029037701168366157,
+      "n": 25
+    },
+    "artery_control_resistance_overlap_with_bfs": {
+      "mean": 0.31945928,
+      "std": 0.19259350544789924,
+      "n": 25
+    },
+    "artery_control_resistance_overlap_with_radius": {
+      "mean": 0.75941504,
+      "std": 0.07045152154051276,
+      "n": 25
+    }
+  }
+}

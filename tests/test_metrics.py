@@ -11,11 +11,14 @@ from flow_experiment import (
     choose_sources,
     choose_target,
     compute_highways,
+    dataset_results_dir,
     graph_arrays,
     largest_component_nodes,
     set_jaccard,
+    validate_graph_counts,
     weighted_jaccard,
 )
+from visualize import _align_camera_with_xy, _highway_edge_colours
 
 
 def toy_graph() -> tuple[ig.Graph, dict, np.ndarray]:
@@ -88,6 +91,46 @@ class HighwayUsageTests(unittest.TestCase):
         usage = compute_highways(graph, sources=[0, 1], target=4, weights=None)
 
         self.assertEqual(usage.tolist(), [1, 2, 0, 0, 0])
+
+
+class ResultPathTests(unittest.TestCase):
+    def test_dataset_result_folder_uses_graph_stem(self):
+        result = dataset_results_dir(Path("experiments"), Path("data/HC1.5_clearmap.gml"))
+
+        self.assertEqual(result, Path("experiments/HC1.5_clearmap"))
+
+    def test_graph_count_mismatch_is_rejected(self):
+        graph, _arrays, _lcc_nodes = toy_graph()
+
+        with self.assertRaisesRegex(ValueError, "Graph does not match"):
+            validate_graph_counts(graph, {"nodes": 10, "edges": 20})
+
+    def test_matching_graph_counts_are_accepted(self):
+        graph, _arrays, _lcc_nodes = toy_graph()
+
+        validate_graph_counts(graph, {"nodes": 5, "edges": 5})
+
+
+class CameraAlignmentTests(unittest.TestCase):
+    def test_camera_uses_graph_xy_plane(self):
+        class Camera:
+            def set_view_direction(self, **kwargs):
+                self.kwargs = kwargs
+
+        class Viewer:
+            camera = Camera()
+
+        viewer = Viewer()
+        _align_camera_with_xy(viewer)
+
+        self.assertEqual(viewer.camera.kwargs["view_direction"], (0, 0, -1))
+        self.assertEqual(viewer.camera.kwargs["up_direction"], (0, 1, 0))
+
+    def test_highway_colours_stay_in_napari_range(self):
+        colours = _highway_edge_colours("resistance", np.array([1, 2, 100]))
+
+        self.assertGreaterEqual(float(colours.min()), 0.0)
+        self.assertLessEqual(float(colours.max()), 1.0)
 
 
 if __name__ == "__main__":

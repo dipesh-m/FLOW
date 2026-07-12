@@ -1,0 +1,7 @@
+# Capillary-primary highways run (H3 primary), seed 42.
+run_id: exp_C_highways_capillary_seed42
+mode: highways
+source_rule: diverse_capillaries_in_lcc
+seed: 42
+num_sources: 100
+source_pool_size: 400

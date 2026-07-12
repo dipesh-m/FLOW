@@ -3,8 +3,6 @@
 Formal metrics:
     H1: mean front_1pct_overlap_with_bfs for resistance, capillary-primary runs.
     H2: mean front_1pct_overlap_with_radius for resistance, capillary-primary runs.
-        Radius dominates the cost, but length still moves about a quarter of the
-        front, so the overlap sits near 0.74 rather than at 1.0.
     H3: weighted_jaccard_usage and set_jaccard_usage for the capillary-primary
         highways runs, aggregated as mean +/- std over seeds. Weighted Jaccard
         reflects shared usage mass; set Jaccard is a plain overlap of which
@@ -29,9 +27,13 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.lines import Line2D
 
-EXP_DIR = Path("experiments")
+from flow_experiment import dataset_results_dir, validate_graph_counts
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+EXPERIMENTS_ROOT = REPO_ROOT / "experiments"
+EXP_DIR = EXPERIMENTS_ROOT / "HC1.5_gurobi"
 FIG_DIR = EXP_DIR / "_figures"
-GRAPH_PATH = Path("data") / "HC1.5_gurobi.gml"
+GRAPH_PATH = REPO_ROOT / "data" / "HC1.5_gurobi.gml"
 GRAPH_CACHE_PATH = GRAPH_PATH.with_suffix(GRAPH_PATH.suffix + ".pkl")
 
 METHODS = ("bfs", "length", "resistance", "radius")
@@ -245,10 +247,6 @@ def summarise() -> dict[str, Any]:
         },
     }
 
-
-# ---------------------------------------------------------------------------
-# Figures
-# ---------------------------------------------------------------------------
 
 def _mean(b: dict[str, Any] | None) -> float:
     return 0.0 if not b or b.get("mean") is None else float(b["mean"])
@@ -650,6 +648,12 @@ def fig_spatial_maps() -> None:
         print(f"skipped coordinate maps: graph not found at {GRAPH_PATH}")
         return
     graph, arrays = _load_graph_arrays(graph_path)
+    result_dirs = _front_dirs() or _highway_dirs()
+    if result_dirs:
+        summary_name = "summary.json" if (result_dirs[0] / "summary.json").exists() else "highways_summary.json"
+        summary = _read_json(result_dirs[0] / summary_name)
+        if summary is not None:
+            validate_graph_counts(graph, summary)
     coords = arrays["coords"]
     edges = arrays["edge_endpoints"]
 
@@ -678,12 +682,21 @@ def _fmt(b: dict[str, Any] | None) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--experiments", type=Path, default=Path("experiments"),
-                    help="Experiment output folder.")
-    ap.add_argument("--graph", type=Path, default=Path("data") / "HC1.5_gurobi.gml",
+    ap.add_argument("--experiments", type=Path,
+                    help="Override the dataset result folder.")
+    ap.add_argument("--graph", type=Path, default=REPO_ROOT / "data" / "HC1.5_gurobi.gml",
                     help="Path to the GML graph.")
     args = ap.parse_args()
-    _configure_paths(args.experiments, args.graph)
+    graph_path = args.graph if args.graph.is_absolute() else REPO_ROOT / args.graph
+    if args.experiments is None:
+        experiments = dataset_results_dir(EXPERIMENTS_ROOT, graph_path)
+    else:
+        experiments = (
+            args.experiments
+            if args.experiments.is_absolute()
+            else REPO_ROOT / args.experiments
+        )
+    _configure_paths(experiments, graph_path)
 
     EXP_DIR.mkdir(parents=True, exist_ok=True)
     FIG_DIR.mkdir(parents=True, exist_ok=True)

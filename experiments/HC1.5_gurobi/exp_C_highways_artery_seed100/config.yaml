@@ -1,0 +1,7 @@
+# Artery-control highways run, seed 100.
+run_id: exp_C_highways_artery_seed100
+mode: highways
+source_rule: random_arteries_in_lcc
+seed: 100
+num_sources: 100
+source_pool_size: 400

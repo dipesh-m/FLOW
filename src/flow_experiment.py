@@ -38,6 +38,24 @@ HIGHWAY_METHODS = ("bfs", "resistance")
 VALID_SOURCE_RULES = ("diverse_capillaries_in_lcc", "random_arteries_in_lcc")
 
 
+def dataset_results_dir(experiments_root: Path, graph_path: Path) -> Path:
+    """Return the result directory associated with a graph file."""
+    return experiments_root / graph_path.stem
+
+
+def validate_graph_counts(graph: ig.Graph, summary: dict[str, Any]) -> None:
+    """Reject result files created from a different graph."""
+    expected_nodes = summary.get("nodes")
+    expected_edges = summary.get("edges")
+    if expected_nodes == graph.vcount() and expected_edges == graph.ecount():
+        return
+    raise ValueError(
+        "Graph does not match the experiment results: "
+        f"results use {expected_nodes} nodes and {expected_edges} edges; "
+        f"loaded graph has {graph.vcount()} nodes and {graph.ecount()} edges."
+    )
+
+
 @dataclass(frozen=True)
 class MethodResult:
     method: str
@@ -51,10 +69,6 @@ class MethodResult:
     path_length: float
     path_mean_radius: float
 
-
-# ---------------------------------------------------------------------------
-# Logging / config
-# ---------------------------------------------------------------------------
 
 def log(message: str, t0: float) -> None:
     print(f"[{perf_counter() - t0:7.1f}s] {message}", flush=True)
@@ -81,11 +95,6 @@ def load_config(config_path: Path) -> dict[str, Any]:
     return config
 
 
-# ---------------------------------------------------------------------------
-# Graph loading (streaming GML + pickle cache)
-# ---------------------------------------------------------------------------
-
-# Only the node attributes the experiment uses are loaded.
 _NODE_KEYS = ("coordinates", "radii", "vessel_type")
 _INT_NODE_KEYS = {"vessel_type"}
 
@@ -159,7 +168,7 @@ def _is_streaming_format(graph_path: Path) -> bool:
 
 
 def load_graph(graph_path: Path) -> ig.Graph:
-    """Load vascular GML. Pickle-cached next to the GML; ~30s warm vs ~10min cold."""
+    """Load a vascular GML file and reuse a pickle cache when available."""
     import pickle
     cache = graph_path.with_suffix(graph_path.suffix + ".pkl")
     if cache.exists() and cache.stat().st_mtime >= graph_path.stat().st_mtime:
@@ -180,10 +189,6 @@ def load_graph(graph_path: Path) -> ig.Graph:
         g = ig.Graph.Read_GML(str(graph_path))
     return g.as_undirected(combine_edges="first") if g.is_directed() else g
 
-
-# ---------------------------------------------------------------------------
-# Derived arrays
-# ---------------------------------------------------------------------------
 
 def _require_attrs(graph: ig.Graph, attrs: Iterable[str]) -> None:
     missing = [a for a in attrs if a not in graph.vertex_attributes()]
@@ -236,10 +241,6 @@ def lcc_artery_fraction(node_types: np.ndarray, lcc_nodes: np.ndarray) -> float:
     lcc_t = node_types[lcc_nodes]
     return float((lcc_t == 1).sum()) / len(lcc_nodes)
 
-
-# ---------------------------------------------------------------------------
-# Source / target selection
-# ---------------------------------------------------------------------------
 
 def _k_center(coords: np.ndarray, candidates: np.ndarray, k: int) -> list[int]:
     if len(candidates) <= k:
@@ -296,10 +297,6 @@ def choose_target(arrays: dict[str, np.ndarray], lcc_nodes: np.ndarray) -> int:
         raise ValueError("No vein nodes in LCC.")
     return int(veins[int(np.argmax(arrays["node_radii"][veins]))])
 
-
-# ---------------------------------------------------------------------------
-# Edge weights and a single source-shortest-path
-# ---------------------------------------------------------------------------
 
 def method_weights(method: str, arrays: dict[str, np.ndarray]) -> np.ndarray | None:
     if method == "bfs":         return None
@@ -360,10 +357,6 @@ def run_method(
         path_mean_radius=path_mean_radius,
     )
 
-
-# ---------------------------------------------------------------------------
-# Front metric row construction
-# ---------------------------------------------------------------------------
 
 def _overlap(a: np.ndarray, b: np.ndarray) -> float:
     if len(a) == 0:
@@ -444,10 +437,6 @@ def graph_summary_row(graph: ig.Graph, arrays: dict[str, np.ndarray], lcc_nodes:
     return row
 
 
-# ---------------------------------------------------------------------------
-# Highways
-# ---------------------------------------------------------------------------
-
 def compute_highways(
     graph: ig.Graph, sources: list[int], target: int, weights: np.ndarray | None
 ) -> np.ndarray:
@@ -474,10 +463,6 @@ def set_jaccard(left: np.ndarray, right: np.ndarray) -> float:
     return 1.0 if union == 0 else float((a & b).sum()) / union
 
 
-# ---------------------------------------------------------------------------
-# CSV
-# ---------------------------------------------------------------------------
-
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
         raise ValueError(f"No rows to write: {path}")
@@ -491,10 +476,6 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         w.writeheader()
         w.writerows(rows)
 
-
-# ---------------------------------------------------------------------------
-# Run drivers (take a pre-loaded graph)
-# ---------------------------------------------------------------------------
 
 def run_front(
     graph: ig.Graph,

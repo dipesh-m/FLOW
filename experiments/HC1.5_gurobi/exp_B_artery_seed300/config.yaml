@@ -1,0 +1,7 @@
+# Artery-control front run, seed 300.
+run_id: exp_B_artery_seed300
+mode: front
+source_rule: random_arteries_in_lcc
+seed: 300
+num_sources: 5
+source_pool_size: 200
