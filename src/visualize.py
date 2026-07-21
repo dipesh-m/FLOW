@@ -13,11 +13,11 @@ import numpy as np
 
 from flow_experiment import (
     dataset_results_dir,
+    front_nodes,
     graph_arrays,
     largest_component_nodes,
     load_graph,
     method_weights,
-    run_method,
     validate_graph_counts,
 )
 
@@ -578,12 +578,17 @@ def visualize_front(
         weight_list = weights.tolist() if weights is not None else None
         parts: list[_FlowAnimData] = []
         for src in sources:
-            result = run_method(graph, arrays, method, 1, src, target)
             dist = np.asarray(
                 graph.distances(source=src, weights=weight_list, mode="all")[0],
                 dtype=np.float64,
             )
-            anim = _build_front_anim(coords, edge_endpoints, result.front_nodes, dist, n_frames)
+            anim = _build_front_anim(
+                coords,
+                edge_endpoints,
+                front_nodes(dist),
+                dist,
+                n_frames,
+            )
             if anim is not None:
                 parts.append(anim)
         if not parts:

@@ -13,8 +13,8 @@ Edge costs:
     resistance  L / r^4             Hagen-Poiseuille single-tube proxy
     radius      1 / r^4             radius-only ablation of resistance
 
-Not a fluid solver. A controlled graph proxy on a fixed graph with fixed
-source rule and fixed drain target.
+FLOW models vascular transport as a controlled graph proxy on a fixed graph,
+with a fixed source rule and drain target.
 """
 
 from __future__ import annotations
@@ -124,11 +124,15 @@ def _streaming_load_gml(graph_path: Path) -> ig.Graph:
                         if v is None:
                             node_attrs[k].append(None)
                         elif k in _INT_NODE_KEYS:
-                            try: node_attrs[k].append(int(float(v)))
-                            except ValueError: node_attrs[k].append(None)
+                            try:
+                                node_attrs[k].append(int(float(v)))
+                            except ValueError:
+                                node_attrs[k].append(None)
                         elif k == "radii":
-                            try: node_attrs[k].append(float(v))
-                            except ValueError: node_attrs[k].append(None)
+                            try:
+                                node_attrs[k].append(float(v))
+                            except ValueError:
+                                node_attrs[k].append(None)
                         else:
                             node_attrs[k].append(v)
                     in_node = False
@@ -170,6 +174,7 @@ def _is_streaming_format(graph_path: Path) -> bool:
 def load_graph(graph_path: Path) -> ig.Graph:
     """Load a vascular GML file and reuse a pickle cache when available."""
     import pickle
+
     cache = graph_path.with_suffix(graph_path.suffix + ".pkl")
     if cache.exists() and cache.stat().st_mtime >= graph_path.stat().st_mtime:
         try:
@@ -299,10 +304,14 @@ def choose_target(arrays: dict[str, np.ndarray], lcc_nodes: np.ndarray) -> int:
 
 
 def method_weights(method: str, arrays: dict[str, np.ndarray]) -> np.ndarray | None:
-    if method == "bfs":         return None
-    if method == "length":      return arrays["edge_lengths"]
-    if method == "resistance":  return arrays["edge_resistance"]
-    if method == "radius":      return arrays["edge_inv_radius4"]
+    if method == "bfs":
+        return None
+    if method == "length":
+        return arrays["edge_lengths"]
+    if method == "resistance":
+        return arrays["edge_resistance"]
+    if method == "radius":
+        return arrays["edge_inv_radius4"]
     raise ValueError(f"Unknown method {method!r}")
 
 
@@ -312,7 +321,8 @@ def _edge_ids_for_path(graph: ig.Graph, path_nodes: list[int]) -> list[int]:
     return graph.get_eids(list(zip(path_nodes[:-1], path_nodes[1:])))
 
 
-def _front_nodes(distance: np.ndarray) -> np.ndarray:
+def front_nodes(distance: np.ndarray) -> np.ndarray:
+    """Return the nearest 1% of reachable nodes."""
     reachable = np.isfinite(distance)
     n_reach = int(reachable.sum())
     ordered = np.argsort(np.where(reachable, distance, np.inf), kind="stable")
@@ -351,7 +361,7 @@ def run_method(
         target_node=target_node,
         runtime_s=runtime_s,
         reachable_nodes=int(np.isfinite(distance).sum()),
-        front_nodes=_front_nodes(distance),
+        front_nodes=front_nodes(distance),
         path_hops=max(0, len(path_nodes) - 1),
         path_length=path_length,
         path_mean_radius=path_mean_radius,

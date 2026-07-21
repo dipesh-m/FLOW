@@ -12,6 +12,7 @@ from flow_experiment import (
     choose_target,
     compute_highways,
     dataset_results_dir,
+    front_nodes,
     graph_arrays,
     largest_component_nodes,
     set_jaccard,
@@ -82,6 +83,16 @@ class GraphSelectionTests(unittest.TestCase):
 
         self.assertEqual(len(sources), 2)
         self.assertTrue(all(arrays["node_types"][source] == 3 for source in sources))
+
+
+class FrontSelectionTests(unittest.TestCase):
+    def test_front_uses_nearest_one_percent_of_reachable_nodes(self):
+        distances = np.arange(200, dtype=float)
+        distances[[0, 1]] = np.inf
+
+        selected = front_nodes(distances)
+
+        self.assertEqual(selected.tolist(), [2])
 
 
 class HighwayUsageTests(unittest.TestCase):
