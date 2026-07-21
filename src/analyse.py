@@ -62,6 +62,7 @@ FRONT_FIGURES = {
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
+    """Read a CSV file or return an empty list when it is absent."""
     if not path.exists():
         return []
     with path.open(encoding="utf-8") as f:
@@ -69,10 +70,12 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:
+    """Read a JSON object when the file exists."""
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
 def _stats(values: list[float]) -> dict[str, float | int | None]:
+    """Return the mean, sample standard deviation, and count."""
     if not values:
         return {"mean": None, "std": None, "n": 0}
     return {
@@ -83,6 +86,7 @@ def _stats(values: list[float]) -> dict[str, float | int | None]:
 
 
 def _front_dirs() -> list[Path]:
+    """List result directories that contain front metrics."""
     if not EXP_DIR.exists():
         return []
     return [
@@ -92,6 +96,7 @@ def _front_dirs() -> list[Path]:
 
 
 def _highway_dirs() -> list[Path]:
+    """List result directories that contain highway summaries."""
     if not EXP_DIR.exists():
         return []
     return [
@@ -101,6 +106,7 @@ def _highway_dirs() -> list[Path]:
 
 
 def _collect_front_group(dirs: list[Path]) -> dict[str, Any]:
+    """Aggregate front metrics across one source group."""
     overlap_bfs: dict[str, list[float]] = {m: [] for m in METHODS}
     artery: dict[str, list[float]] = {m: [] for m in METHODS}
     res_radius: list[float] = []
@@ -153,6 +159,7 @@ def _collect_front_group(dirs: list[Path]) -> dict[str, Any]:
 
 
 def _collect_highways() -> dict[str, Any]:
+    """Aggregate highway similarities by source group."""
     groups: dict[str, dict[str, list]] = {
         g: {"weighted": [], "set": [], "runs": []}
         for g in ("capillary_primary", "artery_control")
@@ -192,6 +199,7 @@ def _collect_highways() -> dict[str, Any]:
 
 
 def summarise() -> dict[str, Any]:
+    """Build the complete graph-level analysis summary."""
     by_group: dict[str, list[Path]] = {"capillary_primary": [], "artery_control": []}
     lcc_nodes = lcc_art_frac = None
     for d in _front_dirs():
@@ -249,18 +257,22 @@ def summarise() -> dict[str, Any]:
 
 
 def _mean(b: dict[str, Any] | None) -> float:
+    """Extract a mean value for plotting, with zero for missing data."""
     return 0.0 if not b or b.get("mean") is None else float(b["mean"])
 
 
 def _std(b: dict[str, Any] | None) -> float:
+    """Extract a standard deviation for plotting, with zero for missing data."""
     return 0.0 if not b or b.get("std") is None else float(b["std"])
 
 
 def _label_bar(ax, x, y, err=0.0, digits=2) -> None:
+    """Place a value label above a bar and its error range."""
     ax.text(x, y + err + 0.025, f"{y:.{digits}f}", ha="center", va="bottom", fontsize=9)
 
 
 def fig1_front_overlap(a: dict[str, Any]) -> None:
+    """Plot front overlap with BFS for H1 and the artery control."""
     fig, ax = plt.subplots(figsize=(8.5, 4.8), constrained_layout=True)
     methods = ("length", "resistance", "radius")
     groups = tuple(g for g in ("capillary_primary", "artery_control")
@@ -298,6 +310,7 @@ def fig1_front_overlap(a: dict[str, Any]) -> None:
 
 
 def fig2_radius_overlap(a: dict[str, Any]) -> None:
+    """Plot resistance-to-radius front overlap for H2."""
     fig, ax = plt.subplots(figsize=(6.8, 4.8), constrained_layout=True)
     groups = tuple(g for g in ("capillary_primary", "artery_control")
                    if a["front_1pct"][g]["n_sources"] > 0)
@@ -324,6 +337,7 @@ def fig2_radius_overlap(a: dict[str, Any]) -> None:
 
 
 def fig3_highways(a: dict[str, Any]) -> None:
+    """Plot highway edge-usage similarity for H3."""
     fig, ax = plt.subplots(figsize=(7.6, 4.8), constrained_layout=True)
     groups = ("capillary_primary", "artery_control")
     metrics = ("weighted_jaccard_usage", "set_jaccard_usage")
@@ -365,6 +379,7 @@ def fig3_highways(a: dict[str, Any]) -> None:
 
 
 def _local_graph_path() -> Path | None:
+    """Return the local graph or cache path when available."""
     if GRAPH_PATH.exists():
         return GRAPH_PATH
     if GRAPH_CACHE_PATH.exists():
@@ -373,6 +388,7 @@ def _local_graph_path() -> Path | None:
 
 
 def _configure_paths(experiments: Path, graph: Path) -> None:
+    """Set graph-specific input and output paths for one analysis run."""
     global EXP_DIR, FIG_DIR, GRAPH_PATH, GRAPH_CACHE_PATH
     EXP_DIR = experiments
     FIG_DIR = EXP_DIR / "_figures"
@@ -381,6 +397,7 @@ def _configure_paths(experiments: Path, graph: Path) -> None:
 
 
 def _load_graph_arrays(graph_path: Path) -> tuple[Any, dict[str, Any]]:
+    """Load a graph and derive the arrays required for spatial figures."""
     from flow_experiment import graph_arrays, load_graph
 
     if graph_path.suffix == ".pkl":
@@ -396,6 +413,7 @@ def _load_graph_arrays(graph_path: Path) -> tuple[Any, dict[str, Any]]:
 
 
 def _highway_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
+    """Index highway result directories by source group and seed."""
     out: dict[str, dict[int, Path]] = {g: {} for g in HIGHWAY_FIGURES}
     for d in _highway_dirs():
         s = _read_json(d / "highways_summary.json")
@@ -408,6 +426,7 @@ def _highway_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
 
 
 def _front_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
+    """Index front result directories by source group and seed."""
     out: dict[str, dict[int, Path]] = {g: {} for g in FRONT_FIGURES}
     for d in _front_dirs():
         s = _read_json(d / "summary.json")
@@ -420,12 +439,14 @@ def _front_dirs_by_group_seed() -> dict[str, dict[int, Path]]:
 
 
 def _seeded_filename(stem: str, seed: int) -> str:
+    """Build a stable figure name for one seed."""
     if seed == 0:
         return f"{stem}.png"
     return f"{stem}_seed{seed}.png"
 
 
 def _read_usage(path: Path) -> dict[int, int]:
+    """Read edge-usage counts indexed by edge identifier."""
     usage: dict[int, int] = {}
     with path.open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -440,6 +461,7 @@ def _plot_extent(
     sources: list[int],
     target: int,
 ) -> tuple[float, float, float, float]:
+    """Calculate a padded 2-D extent for highway figures."""
     edge_ids = sorted(set(usages[0]) | set(usages[1]))
     nodes = set(sources)
     nodes.add(target)
@@ -456,6 +478,7 @@ def _plot_extent(
 def _line_segments(
     coords: np.ndarray, edges: np.ndarray, usage: dict[int, int]
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Build ordered 2-D line segments and usage counts."""
     edge_ids = np.asarray(sorted(usage), dtype=np.int64)
     counts = np.asarray([usage[int(eid)] for eid in edge_ids], dtype=np.float64)
     used_edges = edges[edge_ids]
@@ -474,6 +497,7 @@ def _highway_figure(
     out_path: Path,
     title: str,
 ) -> None:
+    """Render BFS and resistance highway usage for one run."""
     summary = _read_json(run_dir / "highways_summary.json")
     if summary is None:
         return
@@ -551,6 +575,7 @@ def _front_extent(
     sources: list[int],
     target: int,
 ) -> tuple[float, float, float, float]:
+    """Calculate a padded 2-D extent for front figures."""
     nodes = set(sources)
     nodes.add(target)
     for arr in front_nodes:
@@ -569,6 +594,7 @@ def _front_map_figure(
     out_path: Path,
     title: str,
 ) -> None:
+    """Render BFS and resistance front maps for one run."""
     from flow_experiment import run_method
 
     summary = _read_json(run_dir / "summary.json")
@@ -643,6 +669,7 @@ def _front_map_figure(
 
 
 def fig_spatial_maps() -> None:
+    """Generate per-seed highway and front spatial figures."""
     graph_path = _local_graph_path()
     if graph_path is None:
         print(f"skipped coordinate maps: graph not found at {GRAPH_PATH}")
@@ -675,12 +702,14 @@ def fig_spatial_maps() -> None:
 
 
 def _fmt(b: dict[str, Any] | None) -> str:
+    """Format one summary statistic for console output."""
     if not b or b.get("mean") is None:
         return "n/a"
     return f"{b['mean']:.3f} (sd {b['std']:.3f}, n={b['n']})"
 
 
 def main() -> None:
+    """Aggregate experiment outputs and generate analysis figures."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--experiments", type=Path,
                     help="Override the dataset result folder.")

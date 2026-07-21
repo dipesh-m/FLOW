@@ -71,10 +71,12 @@ class MethodResult:
 
 
 def log(message: str, t0: float) -> None:
+    """Print a message with elapsed runtime."""
     print(f"[{perf_counter() - t0:7.1f}s] {message}", flush=True)
 
 
 def load_config(config_path: Path) -> dict[str, Any]:
+    """Load and validate one experiment configuration."""
     with config_path.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     if not isinstance(config, dict):
@@ -100,6 +102,7 @@ _INT_NODE_KEYS = {"vessel_type"}
 
 
 def _streaming_load_gml(graph_path: Path) -> ig.Graph:
+    """Parse the graph attributes required by FLOW from a GML file."""
     node_attrs: dict[str, list] = {k: [] for k in _NODE_KEYS}
     edge_src: list[int] = []
     edge_dst: list[int] = []
@@ -158,6 +161,7 @@ def _streaming_load_gml(graph_path: Path) -> ig.Graph:
 
 
 def _is_streaming_format(graph_path: Path) -> bool:
+    """Detect the line-oriented GML layout used by the input graphs."""
     try:
         with open(graph_path, "r", encoding="utf-8", errors="replace") as f:
             for _ in range(50):
@@ -196,12 +200,14 @@ def load_graph(graph_path: Path) -> ig.Graph:
 
 
 def _require_attrs(graph: ig.Graph, attrs: Iterable[str]) -> None:
+    """Raise an error when required vertex attributes are absent."""
     missing = [a for a in attrs if a not in graph.vertex_attributes()]
     if missing:
         raise ValueError(f"Graph missing vertex attributes: {', '.join(missing)}")
 
 
 def parse_vertex_coordinates(graph: ig.Graph) -> np.ndarray:
+    """Convert comma-separated vertex coordinates to a numeric array."""
     _require_attrs(graph, ["coordinates"])
     return np.asarray(
         [list(map(float, c.split(","))) for c in graph.vs["coordinates"]],
@@ -210,6 +216,7 @@ def parse_vertex_coordinates(graph: ig.Graph) -> np.ndarray:
 
 
 def edge_endpoint_array(graph: ig.Graph) -> np.ndarray:
+    """Return graph edge endpoints as an integer array."""
     return np.asarray(graph.get_edgelist(), dtype=np.int64)
 
 
@@ -238,16 +245,19 @@ def graph_arrays(graph: ig.Graph) -> dict[str, Any]:
 
 
 def largest_component_nodes(graph: ig.Graph) -> np.ndarray:
+    """Return node indices from the largest connected component."""
     comps = graph.connected_components(mode="weak")
     return np.asarray(comps[int(np.argmax(comps.sizes()))], dtype=np.int64)
 
 
 def lcc_artery_fraction(node_types: np.ndarray, lcc_nodes: np.ndarray) -> float:
+    """Calculate the artery-node fraction within the largest component."""
     lcc_t = node_types[lcc_nodes]
     return float((lcc_t == 1).sum()) / len(lcc_nodes)
 
 
 def _k_center(coords: np.ndarray, candidates: np.ndarray, k: int) -> list[int]:
+    """Select spatially distributed candidates with greedy k-center sampling."""
     if len(candidates) <= k:
         return [int(x) for x in candidates]
     pool = coords[candidates]
@@ -304,6 +314,7 @@ def choose_target(arrays: dict[str, np.ndarray], lcc_nodes: np.ndarray) -> int:
 
 
 def method_weights(method: str, arrays: dict[str, np.ndarray]) -> np.ndarray | None:
+    """Return edge weights for a path method, or no weights for BFS."""
     if method == "bfs":
         return None
     if method == "length":
@@ -316,6 +327,7 @@ def method_weights(method: str, arrays: dict[str, np.ndarray]) -> np.ndarray | N
 
 
 def _edge_ids_for_path(graph: ig.Graph, path_nodes: list[int]) -> list[int]:
+    """Map consecutive path nodes to graph edge identifiers."""
     if len(path_nodes) < 2:
         return []
     return graph.get_eids(list(zip(path_nodes[:-1], path_nodes[1:])))
@@ -337,6 +349,7 @@ def run_method(
     source_node: int,
     target_node: int,
 ) -> MethodResult:
+    """Evaluate one path method for one source and drain target."""
     weights = method_weights(method, arrays)
     weight_list = weights.tolist() if isinstance(weights, np.ndarray) else weights
 
@@ -369,12 +382,14 @@ def run_method(
 
 
 def _overlap(a: np.ndarray, b: np.ndarray) -> float:
+    """Calculate the fraction of nodes in the first array shared by both."""
     if len(a) == 0:
         return 0.0
     return len(set(a.tolist()) & set(b.tolist())) / len(a)
 
 
 def _artery_fraction(node_types: np.ndarray, nodes: np.ndarray) -> float:
+    """Calculate the artery-node fraction in a node subset."""
     if len(nodes) == 0:
         return 0.0
     return float((node_types[nodes] == 1).sum()) / len(nodes)
@@ -383,6 +398,7 @@ def _artery_fraction(node_types: np.ndarray, nodes: np.ndarray) -> float:
 def metric_rows(
     results: list[MethodResult], node_types: np.ndarray
 ) -> list[dict[str, Any]]:
+    """Build front-overlap metric rows for one source."""
     by_method = {r.method: r for r in results}
     if "bfs" not in by_method:
         raise ValueError("Method list must include 'bfs'.")
@@ -410,6 +426,7 @@ def metric_rows(
 
 
 def path_row(r: MethodResult) -> dict[str, Any]:
+    """Convert one method result to a path-summary row."""
     return {
         "uid": f"src{r.source_index}_{r.method}",
         "source_index": r.source_index,
@@ -423,6 +440,7 @@ def path_row(r: MethodResult) -> dict[str, Any]:
 
 
 def graph_summary_row(graph: ig.Graph, arrays: dict[str, np.ndarray], lcc_nodes: np.ndarray) -> dict[str, Any]:
+    """Build a summary of graph size, vessel types, lengths, and radii."""
     nt = arrays["node_types"]
     nr = arrays["node_radii"]
     el = arrays["edge_lengths"]
@@ -450,6 +468,7 @@ def graph_summary_row(graph: ig.Graph, arrays: dict[str, np.ndarray], lcc_nodes:
 def compute_highways(
     graph: ig.Graph, sources: list[int], target: int, weights: np.ndarray | None
 ) -> np.ndarray:
+    """Count edge use across shortest paths from sources to one target."""
     weight_list = weights.tolist() if isinstance(weights, np.ndarray) else weights
     usage = np.zeros(graph.ecount(), dtype=np.int64)
     for source in sources:
@@ -463,17 +482,20 @@ def compute_highways(
 
 
 def weighted_jaccard(left: np.ndarray, right: np.ndarray) -> float:
+    """Calculate weighted Jaccard similarity between edge-usage vectors."""
     den = float(np.maximum(left, right).sum())
     return 1.0 if den == 0.0 else float(np.minimum(left, right).sum()) / den
 
 
 def set_jaccard(left: np.ndarray, right: np.ndarray) -> float:
+    """Calculate Jaccard similarity between sets of used edges."""
     a, b = left > 0, right > 0
     union = int((a | b).sum())
     return 1.0 if union == 0 else float((a & b).sum()) / union
 
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Write dictionary rows to a CSV file with stable field order."""
     if not rows:
         raise ValueError(f"No rows to write: {path}")
     fieldnames: list[str] = []
@@ -496,6 +518,7 @@ def run_front(
     output_root: Path,
     t0: float,
 ) -> Path:
+    """Run one front experiment and write its result files."""
     out_dir = output_root / config["run_id"]
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(config_path, out_dir / "config.yaml")
@@ -553,6 +576,7 @@ def run_highways(
     output_root: Path,
     t0: float,
 ) -> Path:
+    """Run one highway experiment and write edge-usage results."""
     out_dir = output_root / config["run_id"]
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(config_path, out_dir / "config.yaml")

@@ -1,14 +1,16 @@
 # FLOW
 
-FLOW compares shortest-path fronts and source-to-drain routes on 3-D vascular graphs. The study tests how topology, vessel length, and vessel radius change reachability and edge usage.
+Conducted at the **Department of Artificial Intelligence in Biomedical Engineering (AIBE), Friedrich-Alexander-Universität Erlangen-Nürnberg**.
 
-## Research questions
+FLOW compares shortest-path fronts and source-to-drain routes on 3-D vascular graphs. The study tests how topology, vessel length, and vessel radius change early fronts and edge usage.
 
-| ID | Question | Primary metric |
+## Hypotheses
+
+| ID | Hypothesis | Primary metric |
 |---|---|---|
-| H1 | Does radius-aware cost change the early front relative to BFS? | 1% front overlap with BFS |
-| H2 | Does length change the radius-dominated front? | Resistance-front overlap with radius-only cost |
-| H3 | Do BFS and resistance use the same source-to-drain highways? | Weighted and set Jaccard of edge usage |
+| H1 | Including vessel radius changes shortest-path fronts compared with topology- and length-based routing. | 1% front overlap with BFS |
+| H2 | Vessel radius affects resistance-weighted routes more than vessel length. | Resistance overlap with radius-only and BFS fronts |
+| H3 | Topology-based and resistance-weighted routing produce different source-to-drain highways. | Weighted and set Jaccard of edge usage |
 
 ## Stored results
 
@@ -17,7 +19,9 @@ FLOW compares shortest-path fronts and source-to-drain routes on 3-D vascular gr
 | `HC1.5_gurobi` | 7,506,802 | 0.306 | 0.743 | 0.025 |
 | `HC1.5_clearmap` | 822,658 | 0.450 | 0.752 | 0.034 |
 
-Each value is the mean across the configured capillary-source runs. Full statistics and figures are stored under `experiments/<graph-name>/`.
+Front values average 25 source-level comparisons. Highway values average three seeded runs with 100 sources per run. Full statistics and figures are stored under `experiments/<graph-name>/`.
+
+The [study](docs/study.md) defines the hypotheses, experimental design, results, and interpretation.
 
 ## Setup
 
@@ -120,11 +124,18 @@ python -m unittest discover -s tests -v
 ```text
 configs/                         experiment definitions
 data/                            local graph files and caches
-docs/methodology.md              study design and architecture
+docs/study.md                    hypotheses, methods, results, and conclusions
+docs/architecture.md             pipeline architecture and component roles
 experiments/<graph-name>/        run outputs, analysis, and figures
 src/                             experiment, analysis, and visualization code
 tests/                           unit tests
 experiments.csv                  experiment registry
 ```
 
-See [docs/methodology.md](docs/methodology.md) for the cost definitions, sampling rules, metrics, and output schema.
+See the [study](docs/study.md) for the experimental record and [architecture](docs/architecture.md) for the pipeline structure.
+
+## Limitations
+
+- FLOW uses graph-based path costs and does not simulate pressure, velocity, or fluid dynamics.
+- Results depend on the supplied graph reconstructions and configured source and target rules.
+- Seed replicates describe variation across sampled sources; the study does not estimate population-level effects.

@@ -11,21 +11,25 @@ DATASETS = ("HC1.5_clearmap", "HC1.5_gurobi")
 
 
 def read_registry() -> list[dict[str, str]]:
+    """Read the experiment registry."""
     with (REPO_ROOT / "experiments.csv").open(encoding="utf-8", newline="") as file:
         return list(csv.DictReader(file))
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
+    """Read a stored result CSV file."""
     with path.open(encoding="utf-8", newline="") as file:
         return list(csv.DictReader(file))
 
 
 def read_yaml(path: Path) -> dict:
+    """Read one experiment configuration."""
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 class RepositoryIntegrityTests(unittest.TestCase):
     def test_registry_and_configs_match(self):
+        """Registry rows and source configurations must agree."""
         registry = read_registry()
         by_run = {row["run_id"]: row for row in registry}
         config_paths = sorted((REPO_ROOT / "configs").glob("*.yaml"))
@@ -46,6 +50,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 self.assertEqual(config["mode"], expected_mode)
 
     def test_stored_results_cover_registered_runs(self):
+        """Each dataset must contain every registered run."""
         run_ids = {row["run_id"] for row in read_registry()}
 
         for dataset in DATASETS:
@@ -59,6 +64,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 self.assertEqual(stored_runs, run_ids)
 
     def test_stored_result_metadata_matches_configs(self):
+        """Stored metadata and row counts must match each configuration."""
         configs = {
             path.stem: read_yaml(path)
             for path in (REPO_ROOT / "configs").glob("*.yaml")
@@ -94,6 +100,7 @@ class RepositoryIntegrityTests(unittest.TestCase):
                 self.assertEqual(len(graph_counts), 1)
 
     def test_stored_analysis_covers_all_seed_replicates(self):
+        """Stored analyses must include every configured seed replicate."""
         for dataset in DATASETS:
             path = REPO_ROOT / "experiments" / dataset / "analysis.json"
             analysis = json.loads(path.read_text(encoding="utf-8"))

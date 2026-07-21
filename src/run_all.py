@@ -24,6 +24,7 @@ DEFAULT_CONFIG_DIR = REPO_ROOT / "configs"
 
 
 def main() -> None:
+    """Run selected YAML configurations against one vascular graph."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="Substring filter on config file name.")
     ap.add_argument("--graph", type=Path, default=DEFAULT_GRAPH_PATH, help="Path to the GML graph.")

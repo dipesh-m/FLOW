@@ -82,10 +82,12 @@ HIGHWAY_GLOW_COLOUR = [0.20, 1.0, 0.46, 1.0]
 
 
 def _abs_path(path: Path) -> Path:
+    """Resolve a path relative to the repository root."""
     return path if path.is_absolute() else REPO_ROOT / path
 
 
 def _load_summary(run_dir: Path) -> dict:
+    """Load the front or highway summary for one run."""
     for name in ("summary.json", "highways_summary.json"):
         path = run_dir / name
         if path.exists():
@@ -94,11 +96,13 @@ def _load_summary(run_dir: Path) -> dict:
 
 
 def _prefer_hardware_opengl() -> None:
+    """Set default environment options for hardware-backed rendering."""
     os.environ.setdefault("QT_OPENGL", "desktop")
     os.environ.setdefault("NAPARI_ASYNC", "1")
 
 
 def _print_gpu_info() -> None:
+    """Print the OpenGL renderer details exposed by VisPy."""
     try:
         from vispy import sys_info
 
@@ -116,6 +120,7 @@ def _print_gpu_info() -> None:
 
 
 def _configure_text_overlay(viewer, text: str) -> None:
+    """Configure the viewer legend and playback hint."""
     viewer.text_overlay.visible = True
     viewer.text_overlay.text = text
     viewer.text_overlay.font_size = TEXT_OVERLAY_FONT_SIZE
@@ -141,12 +146,14 @@ def _align_camera_with_xy(viewer) -> None:
 
 
 def _edge_vectors(coords: np.ndarray, edges: np.ndarray) -> np.ndarray:
+    """Convert graph edges to Napari vector geometry."""
     origin = coords[edges[:, 0]]
     vectors = np.stack([origin, coords[edges[:, 1]] - origin], axis=1)
     return vectors.astype(np.float32, copy=False)
 
 
 def _highway_edge_colours(method: str, usage: np.ndarray) -> np.ndarray:
+    """Blend method and usage colours for highway edges."""
     base = np.asarray(METHOD_COLOURS[method], dtype=np.float32)
     highlight = np.asarray(HIGHWAY_USAGE_COLOUR, dtype=np.float32)
     max_count = int(usage.max()) if len(usage) else 1
@@ -162,6 +169,7 @@ def _highway_edge_colours(method: str, usage: np.ndarray) -> np.ndarray:
 
 
 def _highway_glow_tiers(usage: np.ndarray) -> list[tuple[str, float, float, np.ndarray]]:
+    """Group repeated highway edges into glow tiers by usage."""
     if len(usage) == 0:
         return []
     repeated_edges = usage[usage >= HIGHWAY_GLOW_MIN_USAGE]
@@ -186,30 +194,35 @@ def _highway_glow_tiers(usage: np.ndarray) -> list[tuple[str, float, float, np.n
 
 
 def _refresh_vector_layer(layer, data: np.ndarray) -> None:
+    """Refresh a Napari vector layer after an in-place data update."""
     layer._data = data
     layer.set_view_slice()
     layer.events.set_data()
 
 
 def _lcc_edges(edge_endpoints: np.ndarray, lcc: np.ndarray, n_nodes: int) -> np.ndarray:
+    """Return edges whose endpoints both belong to the largest component."""
     in_lcc = np.zeros(n_nodes, dtype=bool)
     in_lcc[lcc] = True
     return edge_endpoints[in_lcc[edge_endpoints[:, 0]] & in_lcc[edge_endpoints[:, 1]]]
 
 
 def _graph_edges(edge_endpoints: np.ndarray, lcc: np.ndarray, n_nodes: int, scope: str) -> np.ndarray:
+    """Select all edges or the largest-component subset."""
     if scope == "all":
         return edge_endpoints
     return _lcc_edges(edge_endpoints, lcc, n_nodes)
 
 
 def _graph_nodes(lcc: np.ndarray, n_nodes: int, scope: str) -> np.ndarray:
+    """Select all nodes or the largest-component subset."""
     if scope == "all":
         return np.arange(n_nodes, dtype=np.int64)
     return lcc
 
 
 def _select_edges(edges: np.ndarray, mode: str, max_edges: int) -> np.ndarray:
+    """Apply the requested background-edge display mode."""
     if mode == "off":
         return np.empty((0, 2), dtype=np.int64)
     if mode == "sample" and len(edges) > max_edges:
@@ -220,6 +233,7 @@ def _select_edges(edges: np.ndarray, mode: str, max_edges: int) -> np.ndarray:
 
 
 def _select_nodes(nodes: np.ndarray, mode: str, max_nodes: int) -> np.ndarray:
+    """Apply the requested background-node display mode."""
     if mode == "off":
         return np.empty(0, dtype=np.int64)
     if mode == "sample" and len(nodes) > max_nodes:
@@ -240,6 +254,7 @@ def _vessel_graph(
     node_mode: str,
     max_nodes: int,
 ) -> None:
+    """Add the selected vessel context layers to the viewer."""
     nodes = _select_nodes(_graph_nodes(lcc, len(coords), scope), node_mode, max_nodes)
     edges = _select_edges(
         _graph_edges(edge_endpoints, lcc, len(coords), scope),
@@ -289,6 +304,7 @@ class _FlowAnimData:
         duration: np.ndarray,
         n_frames: int,
     ) -> None:
+        """Sort edge geometry by its first visible frame."""
         self.order = np.argsort(first_frame, kind="stable")
         self.base = np.ascontiguousarray(base[self.order])            # (N, 3) float32
         self.delta = np.ascontiguousarray(delta[self.order])           # (N, 3) float32
@@ -372,6 +388,7 @@ def _build_highway_anim(
     run_dir: Path,
     n_frames: int,
 ) -> tuple[_FlowAnimData, np.ndarray] | None:
+    """Build timed edge geometry for one highway method."""
     usage = _read_highway_usage(run_dir, method, graph.ecount())
     used_eids = np.flatnonzero(usage > 0)
     if len(used_eids) == 0:
@@ -420,6 +437,7 @@ def _build_highway_anim(
 
 
 def _read_highway_usage(run_dir: Path, method: str, edge_count: int) -> np.ndarray:
+    """Load sparse highway counts into a graph-sized usage array."""
     usage = np.zeros(edge_count, dtype=np.int64)
     with (run_dir / f"highways_{method}.csv").open(encoding="utf-8", newline="") as fh:
         for row in csv.DictReader(fh):
@@ -428,7 +446,10 @@ def _read_highway_usage(run_dir: Path, method: str, edge_count: int) -> np.ndarr
 
 
 class FlowAnimator:
+    """Drive in-place updates for animated Napari vector layers."""
+
     def __init__(self, viewer, fps: int, frame_step: int, loop: bool, end_hold_ms: int) -> None:
+        """Configure timers, playback state, and the pause key binding."""
         from qtpy.QtCore import QTimer, Qt
 
         self._fps = fps
@@ -469,10 +490,12 @@ class FlowAnimator:
         offscreen: np.ndarray,
         buffer: np.ndarray,
     ) -> None:
+        """Register one animated vector layer and its data buffers."""
         self._layers.append((layer, anim_data, offscreen, buffer))
         self._n_frames = max(self._n_frames, anim_data.n_frames)
 
     def start(self) -> None:
+        """Restart playback from the first frame."""
         if not self._layers:
             print("FlowAnimator: no layers, nothing to animate")
             return
@@ -489,13 +512,16 @@ class FlowAnimator:
             self._timer.start()
 
     def deferred_start(self) -> None:
+        """Start playback after the viewer finishes initialization."""
         self._start_timer.start()
 
     def stop(self) -> None:
+        """Pause playback and stop the animation timer."""
         self._playing = False
         self._timer.stop()
 
     def toggle(self) -> None:
+        """Toggle playback while preserving the current frame."""
         if self._playing:
             self.stop()
         elif self._frame >= self._n_frames - 1:
@@ -505,9 +531,11 @@ class FlowAnimator:
             self._timer.start()
 
     def _on_space(self, viewer) -> None:
+        """Handle the viewer's Space key binding."""
         self.toggle()
 
     def _tick(self) -> None:
+        """Advance all registered layers by one playback step."""
         try:
             if self._hold_ticks_remaining > 0:
                 for layer, anim, offscreen, buffer in self._layers:
@@ -557,6 +585,7 @@ def visualize_front(
     vessel_nodes: str,
     max_vessel_nodes: int,
 ) -> None:
+    """Build vessel context and animated front layers for one run."""
     n_frames = DEFAULT_FRAMES
     coords = arrays["coords"]
     edge_endpoints = arrays["edge_endpoints"]
@@ -655,6 +684,7 @@ def visualize_highways(
     vessel_nodes: str,
     max_vessel_nodes: int,
 ) -> None:
+    """Build vessel context and animated highway layers for one run."""
     n_frames = DEFAULT_FRAMES
     coords = arrays["coords"]
     edge_endpoints = arrays["edge_endpoints"]
@@ -737,6 +767,7 @@ def visualize_highways(
 
 
 def main() -> None:
+    """Open a Napari viewer for one stored experiment run."""
     parser = argparse.ArgumentParser()
     parser.add_argument("run_id", help="Run id under the dataset result folder.")
     parser.add_argument("--graph", type=Path, default=DEFAULT_GRAPH_PATH, help="Path to the GML graph.")
