@@ -21,7 +21,31 @@ FLOW compares shortest-path fronts and source-to-drain routes on 3-D vascular gr
 
 Front values average 25 source-level comparisons. Highway values average three seeded runs with 100 sources per run. Full statistics and figures are stored under `experiments/<graph-name>/`.
 
-The [study](docs/study.md) defines the hypotheses, experimental design, results, and interpretation.
+## Visualizations
+
+### 3-D Highway Route Animations
+*Source-to-drain highway routes comparing fluid resistance-weighted ($L/r^4$) vs. topology-based (BFS) pathfinding.*
+
+| Resistance-Weighted Highways ($L / r^4$) | Topological Baseline Highways (BFS) |
+|:---:|:---:|
+| ![Resistance Highways](docs/media/RESISTANCE_HIGHWAYS.gif) | ![BFS Highways](docs/media/BFS_HIGHWAYS.gif) |
+
+### 3-D Shortest-Path Front Animations
+*Propagation fronts expanding through the 3D vascular network.*
+
+| Resistance-Weighted Front | Topological BFS Front |
+|:---:|:---:|
+| ![Resistance Front](docs/media/RESISTANCE_FRONT.gif) | ![BFS Front](docs/media/BFS_FRONT.gif) |
+
+### 2D Spatial Maps & Quantitative Figures
+
+| Highway Edge Usage Heatmap | 2-D Front Map (Capillary Sources) |
+|:---:|:---:|
+| ![Highway Heatmap](docs/media/fig4_highways_heatmap_capillary.png) | ![Front Map](docs/media/fig6_front_map_capillary.png) |
+
+| H1: Front Overlap with BFS | H3: Highway Edge Usage Jaccard |
+|:---:|:---:|
+| ![H1 Front Overlap](docs/media/fig1_h1_front_overlap.png) | ![H3 Highways Jaccard](docs/media/fig3_h3_highways_jaccard.png) |
 
 ## Setup
 
@@ -126,6 +150,7 @@ configs/                         experiment definitions
 data/                            local graph files and caches
 docs/study.md                    hypotheses, methods, results, and conclusions
 docs/architecture.md             pipeline architecture and component roles
+docs/media/                      visualizations and animations
 experiments/<graph-name>/        run outputs, analysis, and figures
 src/                             experiment, analysis, and visualization code
 tests/                           unit tests
